@@ -31,11 +31,11 @@ if __name__ == '__main__':
     #time.sleep(1)
     #p1.join()
     #p3.join()
-    """""""""
+    
     test_ip = InterestPacket.encode(b"Test")
     print(test_ip.hex())
     print(decode_tlv(test_ip))
     print(InterestPacket.decode_tlv(test_ip))
-    """""""""
+    
 
 
