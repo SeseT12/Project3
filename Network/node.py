@@ -34,22 +34,17 @@ class Node:
     def connect(self, host, port):
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         send_socket.connect((host, port))
-        #self.send_socket.connect((host, port))
         return send_socket
 
     def send_interest(self, data, send_socket):
         print("send")
         interest_packet_to_send = InterestPacket.encode(data, self.id)
-        #self.send_socket.send(interest_packet_to_send)
         send_socket.send(interest_packet_to_send)
         send_socket.close()
 
     def send_data(self, name, port):
         content_data = self.content_store.content.get(name)
         data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode())
-        #if self.is_socket_connected(port) is False:
-        #    self.connect('localhost', port)
-        #self.send_socket.send(data_packet_to_send)
         send_socket = self.connect('localhost', port)
         send_socket.send(data_packet_to_send)
         send_socket.close()
@@ -99,9 +94,6 @@ class Node:
 
     def forward_interest(self, tlv_data):
         for node_id in self.fib.get_forwarding_nodes(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            #if self.is_socket_connected(self.connections.get(node_id)) is False:
-            #    self.connect('localhost', self.connections.get(node_id))
-            #self.send_interest(tlv_data[TLVType.NAME_COMPONENT])
             send_socket = self.connect('localhost', self.connections.get(node_id))
             self.send_interest(tlv_data[TLVType.NAME_COMPONENT], send_socket)
 
