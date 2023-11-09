@@ -16,7 +16,6 @@ def encode_tlv(tlv_type, value):
         encoded += length_bytes
 
     # Encode Value field
-    print(type(value))
     encoded += value  # Convert value to bytes (assuming it's a string)
 
     return encoded
