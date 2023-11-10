@@ -1,5 +1,6 @@
 from Network import node
 from Network import router
+from Network.central_node import CentralNode
 from multiprocessing import Process
 import time
 
@@ -18,7 +19,7 @@ def create_router():
 
 if __name__ == '__main__':
     print('Test')
-    #"""""""""
+    """""""""
     p1 = Process(target=create_node, args=(b'Test/', 30001, True, 1))
     p3 = Process(target=create_node, args=(b'Test/', 30002, False, 2))
     #p2 = Process(target=create_router)
@@ -31,10 +32,15 @@ if __name__ == '__main__':
     #p1.join()
     #p3.join()
     """""""""
+    """""""""
     test_ip = InterestPacket.encode(b"Test")
     print(test_ip.hex())
     print(decode_tlv(test_ip))
     print(InterestPacket.decode_tlv(test_ip))
     """""""""
+    central_node = CentralNode(1)
+    for i in range(5):
+        central_node.add_node()
+    central_node.create_adj_matrix()
 
 

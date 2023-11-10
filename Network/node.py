@@ -17,18 +17,20 @@ class Node:
         self.id = node_id
 
         self.pit = PendingInterestTable()
-        #TODO
         self.fib = ForwardingInformationBase()
-        self.fib.add_entry("Test/", [1])
 
         #TODO
         self.content_store = ContentStore()
         self.content_store.add_content("Test/", "TestString")
 
-        #TODO
+        #TODO: replace with adj_matrix, calculate port
         self.connections = {1: 30001, 2: 30002}
 
+        self.adj_matrix = None
+
         self.init_server()
+
+    def start(self):
         threading.Thread(target=self.run).start()
 
     def connect(self, host, port):
