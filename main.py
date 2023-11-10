@@ -40,7 +40,12 @@ if __name__ == '__main__':
     """""""""
     central_node = CentralNode(1)
     for i in range(5):
+        print("i")
+        print(i)
         central_node.add_node()
-    central_node.create_adj_matrix()
+
+    #send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #send_socket.connect(('localhost', 33003))
+    #central_node.create_adj_matrix()
 
 

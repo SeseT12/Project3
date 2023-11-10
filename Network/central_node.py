@@ -2,31 +2,60 @@ import random
 from Network.forwarding_information_base import ForwardingInformationBase
 from Network.node import Node
 import numpy as np
+import threading
+import socket
+import json
 
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
 
 class CentralNode:
     def __init__(self, network_id):
         self.network_id = network_id
         self.node_id_increment = 1
-        self.nodes = {}
+        self.nodes = []
 
     def add_node(self):
-        new_node = Node(33000 + self.network_id + self.node_id_increment, self.network_id + self.node_id_increment)
-        self.nodes[self.network_id + self.node_id_increment] = new_node
-        # new_node.start()
+        new_node_port = 30000 + self.network_id + self.node_id_increment
+        new_node_id = self.network_id + self.node_id_increment
+        threading.Thread(target=self.create_node, args=(new_node_port, new_node_id, self.network_id)).start()
+        #new_node = Node(new_node_port, new_node_id, self.network_id)
+
+        self.nodes.append(self.network_id + self.node_id_increment)
         self.node_id_increment += 1
 
         adj_matrix = self.create_adj_matrix()
-        self.distribute_adj_matrix(adj_matrix)
+        #self.distribute_adj_matrix(adj_matrix)
         self.distribute_fib(adj_matrix)
+        print(adj_matrix)
+
+    def create_node(self, port, id, network_id):
+        new_node = Node(port, id, network_id)
+        new_node.start()
 
     def distribute_adj_matrix(self, adj_matrix):
         for i in range(len(self.nodes)):
-            self.nodes.get(self.network_id + i + 1).adj_matrix = adj_matrix
+            print("distribute adj")
+            #self.nodes.get(self.network_id + i + 1).adj_matrix = adj_matrix
 
     def distribute_fib(self, adj_matrix):
+        print(len(self.nodes))
+        print(adj_matrix)
         for i in range(len(self.nodes)):
-            self.nodes.get(self.network_id + i + 1).fib = self.create_fib(adj_matrix, i)
+            send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            send_socket.connect(('localhost', 30000 + self.network_id + i + 1))
+            send_socket.send(json.dumps(self.create_fib(adj_matrix, i).entries, cls=NpEncoder).encode())
+            send_socket.shutdown(socket.SHUT_RDWR)
+            send_socket.close()
+            print("fib_i: " + str(i))
+            #self.nodes.get(self.network_id + i + 1).fib = self.create_fib(adj_matrix, i)
 
     def create_adj_matrix(self):
         adj_matrix = np.zeros((len(self.nodes), len(self.nodes)), np.uint8)
@@ -48,6 +77,7 @@ class CentralNode:
                 if len(forwarding_nodes) > 0:
                     fib.add_entry(name_prefix, forwarding_nodes)
 
+        print(fib.entries)
         return fib
 
     def find_paths_to_node(self, adj_matrix, from_node_index, to_node_index):
