@@ -2,7 +2,8 @@ from Network import node
 from Network import router
 from multiprocessing import Process
 import time
-
+from Network.interest_packet import InterestPacket
+from Utils.tlv import decode_tlv
 
 def create_node(message, port, send, node_id):
     new_node = node.Node(port, node_id)

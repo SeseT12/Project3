@@ -1,11 +1,15 @@
 from node import Node
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
+from Utils.tlv_types import TLVType
+from Utils import tlv
+from key_packet import KeyPacket
+from data_packet import DataPacket
 
 
 class KeyServer(Node):
-    def __init__(self, host, port):
-        super().__init__(self, host, port)
+    def __init__(self, port, id):
+        super(KeyServer, self).__init__(port, id)
         self.keyserver = {}
         self.private_key = ec.generate_private_key(
             ec.SECP384R1()
@@ -26,22 +30,36 @@ class KeyServer(Node):
                 connection, client_address = self.receive_socket.accept()
                 data = connection.recv(1024)
                 data = KeyPacket.decode_tlv(data)
-                data = self.key.
                 if TLVType.KEY_PACKET in data:
-                    
+                    self.add_network(data[TLVType.NAME], data[TLVType.ID])
 
                 elif TLVType.KEY_REQUEST_PACKET in data:
-                    chosen_hash = hashes.SHA256()
-                    hasher = hashes.Hash(chosen_hash)
-                    key = self.get_key(name)
-                    hasher.update(key)
-                    digest = hasher.finalize()
-                    sig = self.private_key.sign(
-                        digest,
-                        ec.ECDSA(utils.Prehashed(chosen_hash))
-                    )
+                    name = data[TLVType.NAME]
+                    self.send_key(name, connection)
 
-                    client_address.send(KeyPacket.encode_key(data, sig))
 
         except Exception as e:
             raise e
+
+    def send_ack(self, send_socket):
+        ACK_message = b'ACK'
+        signed_message = self.sign_message(ACK_message)
+        ACK_packet = DataPacket.encode("Keyserver", ACK_message + signed_message) #What is name here?
+        send_socket.send(ACK_packet)
+        send_socket.close()
+
+    def send_key(self, name, send_socket):
+        key = self.get_key(name)
+        key_signature = self.sign_message(key)
+        key_packet = KeyPacket.encode_key(name, key + key_signature)
+        send_socket.send(key_packet)
+        send_socket.close()
+
+
+    def sign_message(self, message):
+        sig = self.private_key.sign(
+            message,
+            ec.ECDSA(hashes.SHA256())
+        )
+        return sig
+
