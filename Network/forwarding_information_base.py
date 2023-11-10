@@ -11,3 +11,5 @@ class ForwardingInformationBase:
         for entry in self.entries:
             if entry[0] == name_prefix:
                 return entry[1]
+
+        return []

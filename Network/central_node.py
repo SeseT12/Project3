@@ -34,7 +34,6 @@ class CentralNode:
         adj_matrix = self.create_adj_matrix()
         #self.distribute_adj_matrix(adj_matrix)
         self.distribute_fib(adj_matrix)
-        print(adj_matrix)
 
     def create_node(self, port, id, network_id):
         new_node = Node(port, id, network_id)
@@ -46,15 +45,12 @@ class CentralNode:
             #self.nodes.get(self.network_id + i + 1).adj_matrix = adj_matrix
 
     def distribute_fib(self, adj_matrix):
-        print(len(self.nodes))
-        print(adj_matrix)
         for i in range(len(self.nodes)):
             send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             send_socket.connect(('localhost', 30000 + self.network_id + i + 1))
             send_socket.send(json.dumps(self.create_fib(adj_matrix, i).entries, cls=NpEncoder).encode())
             send_socket.shutdown(socket.SHUT_RDWR)
             send_socket.close()
-            print("fib_i: " + str(i))
             #self.nodes.get(self.network_id + i + 1).fib = self.create_fib(adj_matrix, i)
 
     def create_adj_matrix(self):
@@ -77,7 +73,6 @@ class CentralNode:
                 if len(forwarding_nodes) > 0:
                     fib.add_entry(name_prefix, forwarding_nodes)
 
-        print(fib.entries)
         return fib
 
     def find_paths_to_node(self, adj_matrix, from_node_index, to_node_index):

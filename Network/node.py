@@ -63,7 +63,6 @@ class Node:
         """Initialization of the TCP/IP server to receive connections. It binds to the given host and port."""
         print("Initialisation of the Node on port: " + str(self.port) + " on node (" + str(self.id) + ")")
         #self.receive_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        print(self.port)
         self.receive_socket.bind(('', self.port))
         self.receive_socket.settimeout(10.0)
         self.receive_socket.listen(1)
@@ -76,11 +75,7 @@ class Node:
                 connection, client_address = self.receive_socket.accept()
                 data = connection.recv(1024)
                 if data:
-                    print(data)
-                    if len(InterestPacket.decode_tlv(data)) > 0:
-                        threading.Thread(target=self.receive_message, args=(data,)).start()
-                    else:
-                        print(data.decode())
+                    threading.Thread(target=self.receive_message, args=(data,)).start()
 
         except Exception as e:
             raise e
@@ -92,12 +87,12 @@ class Node:
     def process_message(self, data):
         #TODO: works for interest + data packet, move to tlv
         tlv_data = InterestPacket.decode_tlv(data)
-        print(tlv_data)
         if TLVType.INTEREST_PACKET in tlv_data:
             print("Interest Packet")
             self.process_interest(tlv_data)
         if TLVType.DATA_PACKET in tlv_data:
-            print("Data Packet " + str(self.id))
+            print("Data Packet")
+            hex_string = ''.join([f'{byte:02x}' for byte in data])
             self.process_data_packet(tlv_data)
         if len(tlv_data) == 0:
             self.fib.entries = json.loads(data.decode())
@@ -142,7 +137,6 @@ class Node:
     def simulate_interest_request(self):
         while True:
             time.sleep(random.uniform(5, 10))
-            print("simulate")
             target_node = random.choice([i for i in range(1, 5)]) + self.network_id
             if target_node != self.id:
                 target_data = random.choice([i for i in range(10)])
