@@ -25,6 +25,10 @@ class Node:
         self.content_store = ContentStore()
         self.content_store.add_content("Test/", "TestString")
 
+        self.private_key = ec.generate_private_key(
+            ec.SECP384R1()
+            )
+
         #TODO
         self.connections = {1: 30001, 2: 30002}
 
@@ -118,5 +122,39 @@ class Node:
                 return False
         except socket.error:
             return False
+
+    def sign_message(self, message):
+        sig = self.private_key.sign(
+            message,
+            ec.ECDSA(hashes.SHA256())
+        )
+        return sig
+
+    def verify_message(self, message, signature, sender_name):
+        if sender_name in self.keys:
+            sender_key = self.keys[sender_key]
+        else:
+            sender_key = self.get_key(sender_name)
+        return sender_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+
+    def get_key(sender_name):
+        # contact keyserver for public key
+        key_request_packet = KeyPacket.encode_request(self.id, sender_name)
+        try:
+            keyserver_socket = self.connect(KEY_SERVER_HOST, KEY_SERVER_ID)
+            keyserver_socket.send(key_request_packet)
+            sleep(1) # can reduce this, also need to have a fail case
+            reply = keyserver_socket.recv(1024)
+            if not reply:
+                pass
+            data = KeyPacket.decode_tlv(reply)
+            content = data[TLVType.CONTENT]
+            signature = data[TLVType.SIGNATURE]
+            if self.verify_message(content, signature, "keyserver"):
+                return data[TLVType.CONTENT]
+            return node_interest_exists
+        except Exception as e:
+            raise e
+
 
 

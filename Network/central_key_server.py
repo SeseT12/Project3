@@ -11,9 +11,6 @@ class KeyServer(Node):
     def __init__(self, port, id):
         super(KeyServer, self).__init__(port, id)
         self.keyserver = {}
-        self.private_key = ec.generate_private_key(
-            ec.SECP384R1()
-            )
 
     def add_network(self, name, key):
         self.keyserver[name] = key
@@ -31,7 +28,7 @@ class KeyServer(Node):
                 data = connection.recv(1024)
                 data = KeyPacket.decode_tlv(data)
                 if TLVType.KEY_PACKET in data:
-                    self.add_network(data[TLVType.NAME], data[TLVType.ID])
+                    self.add_network(data[TLVType.NAME], data[TLVType.CONTENT])
 
                 elif TLVType.KEY_REQUEST_PACKET in data:
                     name = data[TLVType.NAME]
@@ -56,10 +53,5 @@ class KeyServer(Node):
         send_socket.close()
 
 
-    def sign_message(self, message):
-        sig = self.private_key.sign(
-            message,
-            ec.ECDSA(hashes.SHA256())
-        )
-        return sig
+  
 
