@@ -2,15 +2,14 @@ from Network import node
 from Network import router
 from multiprocessing import Process
 import time
-from Network.interest_packet import InterestPacket
-from Utils.tlv import decode_tlv
 
 
-def create_node(name, message, port, send):
-    new_node = node.Node(name, port)
+def create_node(message, port, send, node_id):
+    new_node = node.Node(port, node_id)
     if send is True:
-        new_node.connect('localhost', 30000)
-        new_node.send_interest(message)
+        send_socket = new_node.connect('localhost', 30002)
+        new_node.send_interest(message, send_socket)
+        send_socket.close()
 
 
 def create_router():
@@ -20,10 +19,10 @@ def create_router():
 if __name__ == '__main__':
     print('Test')
     #"""""""""
-    p1 = Process(target=create_node, args=("test_node", b'Test1', 30001, True))
-    p3 = Process(target=create_node, args=("test_node_2", b'Test2', 30002, False))
-    p2 = Process(target=create_router)
-    p2.start()
+    p1 = Process(target=create_node, args=(b'Test/', 30001, True, 1))
+    p3 = Process(target=create_node, args=(b'Test/', 30002, False, 2))
+    #p2 = Process(target=create_router)
+    #p2.start()
     p3.start()
     #p2.join()
     time.sleep(1)
