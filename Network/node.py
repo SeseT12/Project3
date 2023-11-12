@@ -11,6 +11,7 @@ from Network.content_store import ContentStore
 from Network.data_packet import DataPacket
 
 import json
+import select
 
 class Node:
     def __init__(self, port, node_id, network_id):
@@ -42,15 +43,15 @@ class Node:
     def connect(self, host, port):
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         send_socket.connect((host, port))
-        print("connect")
+        print(str(self.id) + ": Connected to " + str(port))
         return send_socket
 
     def send_interest(self, data, port):
-        print("send")
         interest_packet_to_send = InterestPacket.encode(data, self.id)
         send_socket = self.connect('localhost', port)
         send_socket.send(interest_packet_to_send)
         send_socket.close()
+        print("Sent Interest Packet to " + str(port))
 
     def send_data(self, name, port):
         content_data = self.content_store.content.get(name)
@@ -58,43 +59,45 @@ class Node:
         send_socket = self.connect('localhost', port)
         send_socket.send(data_packet_to_send)
         send_socket.close()
+        print("Sent Data Packet to " + str(port))
 
     def init_server(self):
         """Initialization of the TCP/IP server to receive connections. It binds to the given host and port."""
         print("Initialisation of the Node on port: " + str(self.port) + " on node (" + str(self.id) + ")")
-        #self.receive_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.receive_socket.bind(('', self.port))
         self.receive_socket.settimeout(10.0)
         self.receive_socket.listen(1)
 
     def run(self):
         try:
-            print("Router: Wait for incoming connection")
+            print("Node: Wait for incoming connection")
 
             while True:
-                connection, client_address = self.receive_socket.accept()
-                data = connection.recv(1024)
-                if data:
-                    threading.Thread(target=self.receive_message, args=(data,)).start()
+                readable, _, _ = select.select([self.receive_socket], [], [], 10.0)
+
+                if self.receive_socket in readable:
+                    connection, client_address = self.receive_socket.accept()
+                    data = connection.recv(1024)
+                    if data:
+                        threading.Thread(target=self.receive_message, args=(data,)).start()
 
         except Exception as e:
             raise e
 
     def receive_message(self, data):
-        print("received")
         self.process_message(data)
 
     def process_message(self, data):
         #TODO: works for interest + data packet, move to tlv
         tlv_data = InterestPacket.decode_tlv(data)
         if TLVType.INTEREST_PACKET in tlv_data:
-            print("Interest Packet")
+            print("Received Interest Packet")
             self.process_interest(tlv_data)
         if TLVType.DATA_PACKET in tlv_data:
-            print("Data Packet")
-            hex_string = ''.join([f'{byte:02x}' for byte in data])
+            print("Received Data Packet")
             self.process_data_packet(tlv_data)
         if len(tlv_data) == 0:
+            print("Received FIB")
             self.fib.entries = json.loads(data.decode())
 
     def process_interest(self, tlv_data):
@@ -109,7 +112,6 @@ class Node:
 
     def forward_interest(self, tlv_data):
         for node_id in self.fib.get_forwarding_nodes(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            #send_socket = self.connect('localhost', 30000 + node_id)
             self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id)
 
     def process_data_packet(self, tlv_data):
