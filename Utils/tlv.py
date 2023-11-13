@@ -1,5 +1,6 @@
 from Utils.tlv_types import TLVType
 
+
 def encode_tlv(tlv_type, value):
     length = len(value)
     # TLV format: Type (1 byte), Length (1-4 bytes), Value (variable length)
@@ -12,7 +13,7 @@ def encode_tlv(tlv_type, value):
     else:
         # If length doesn't fit in a single byte, use multiple bytes for length
         length_bytes = length.to_bytes((length.bit_length() + 7) // 8, 'big')
-        encoded += bytes([0x80 | len(length_bytes)])  # Set the MSB to indicate multi-byte length
+        encoded += bytes([0x80 | len(length_bytes)])  # Set the MSB to indicate multibyte length
         encoded += length_bytes
 
     # Encode Value field

@@ -1,11 +1,13 @@
 from Network import node
 from Network import router
+from Network.central_node import CentralNode
 from multiprocessing import Process
 import time
 
 from Network.central_key_server import KeyServer
 from Network.interest_packet import InterestPacket
 from Utils.tlv import decode_tlv
+
 
 def create_node(message, port, send, node_id):
     new_node = node.Node(port, node_id)
@@ -21,9 +23,9 @@ def create_router():
 
 if __name__ == '__main__':
     print('Test')
-    #"""""""""
     keyserver = KeyServer(30000, 0)
     keyserver_process = Process(target=keyserver.run)
+    """""""""
     p1 = Process(target=create_node, args=(b'Test/', 30001, True, 1))
     p3 = Process(target=create_node, args=(b'Test/', 30002, False, 2))
     #p2 = Process(target=create_router)
@@ -35,11 +37,19 @@ if __name__ == '__main__':
     #time.sleep(1)
     #p1.join()
     #p3.join()
-    
+    """""""""
+    """""""""
     test_ip = InterestPacket.encode(b"Test")
     print(test_ip.hex())
     print(decode_tlv(test_ip))
     print(InterestPacket.decode_tlv(test_ip))
-    
+    """""""""
+    central_node = CentralNode(1)
+    for i in range(5):
+        central_node.add_node()
+
+    #send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #send_socket.connect(('localhost', 33003))
+    #central_node.create_adj_matrix()
 
 
