@@ -6,11 +6,12 @@ from Network.data_packet import DataPacket
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
+import threading
 
 
 class KeyServer(Node):
-    def __init__(self, port, id):
-        super(KeyServer, self).__init__(port, id)
+    def __init__(self, port, id, network_id):
+        super(KeyServer, self).__init__(port, id, network_id)
         self.keyserver = {}
         self.keyserver['keyserver'] = self.private_key.public_key()
 
@@ -68,3 +69,6 @@ class KeyServer(Node):
 
     def register_key(self):
         pass
+
+    def start(self):
+        threading.Thread(target=self.run).start()

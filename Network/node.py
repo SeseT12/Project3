@@ -45,8 +45,6 @@ class Node:
         self.register_key()
 
         #TODO
-        self.connections = {1: 30001, 2: 30002}
-
         self.init_server()
         self.start()
 
@@ -85,18 +83,21 @@ class Node:
 
     def run(self):
         try:
-            print("Router: Wait for incoming connection")
-            connection, client_address = self.receive_socket.accept()
+            print("Node: Wait for incoming connection")
+
             while True:
-                data = connection.recv(1024)
-                if data:
-                    threading.Thread(target=self.receive_message, args=(data,)).start()
+                readable, _, _ = select.select([self.receive_socket], [], [], 10.0)
+
+                if self.receive_socket in readable:
+                    connection, client_address = self.receive_socket.accept()
+                    data = connection.recv(1024)
+                    if data:
+                        threading.Thread(target=self.receive_message, args=(data,)).start()
 
         except Exception as e:
             raise e
 
     def receive_message(self, data):
-        print("received")
         self.process_message(data)
 
     def process_message(self, data):
@@ -113,9 +114,10 @@ class Node:
             self.fib.entries = json.loads(data.decode())
 
     def process_interest(self, tlv_data):
+        #TODO: longest prefix search
         if self.content_store.entry_exists(tlv_data[TLVType.NAME_COMPONENT].decode()):
             self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(),
-                           self.connections.get(int(tlv_data[TLVType.ID].decode())))
+                           30000 + int(tlv_data[TLVType.ID].decode()))
 
         if self.pit.node_interest_exists(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT]) is False:
             self.pit.add_interest(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT])
@@ -123,8 +125,18 @@ class Node:
 
     def forward_interest(self, tlv_data):
         for node_id in self.fib.get_forwarding_nodes(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            send_socket = self.connect('localhost', self.connections.get(node_id))
-            self.send_interest(tlv_data[TLVType.NAME_COMPONENT], send_socket)
+            self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id)
+
+    def simulate_interest_request(self):
+        while True:
+            time.sleep(random.uniform(5, 10))
+            target_node = random.choice([i for i in range(1, 5)]) + self.network_id
+            if target_node != self.id:
+                target_data = random.choice([i for i in range(10)])
+                name = "network" + str(self.network_id) + "/" + str(target_node) + "/Test" + str(target_data)
+
+                port = 30000 + target_node
+                self.send_interest(name.encode(), port)
 
     def process_data_packet(self, tlv_data):
         if self.verify_message(tlv_data[TLVType.CONTENT], tlv_data[TLVType.SIGNATURE], tlv_data[TLVType.NAME_COMPONENT].decode()):
@@ -138,7 +150,7 @@ class Node:
 
     def forward_data(self, tlv_data):
         for node_id in self.pit.pending_interests.get(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(), self.connections.get(int(node_id)))
+            self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(), 30000 + int(node_id))
 
     def is_socket_connected(self, target_port):
         try:
@@ -225,81 +237,9 @@ class Node:
             else:
                 keyserver_socket.close()
                 return "Invalid signature"
-            print("Node: Wait for incoming connection")
-
-            while True:
-                readable, _, _ = select.select([self.receive_socket], [], [], 10.0)
-
-                if self.receive_socket in readable:
-                    connection, client_address = self.receive_socket.accept()
-                    data = connection.recv(1024)
-                    if data:
-                        threading.Thread(target=self.receive_message, args=(data,)).start()
 
         except Exception as e:
             raise e
 
-    def receive_message(self, data):
-        self.process_message(data)
-
-    def process_message(self, data):
-        #TODO: works for interest + data packet, move to tlv
-        tlv_data = InterestPacket.decode_tlv(data)
-        if TLVType.INTEREST_PACKET in tlv_data:
-            print("Received Interest Packet")
-            self.process_interest(tlv_data)
-        if TLVType.DATA_PACKET in tlv_data:
-            print("Received Data Packet")
-            self.process_data_packet(tlv_data)
-        if len(tlv_data) == 0:
-            print("Received FIB")
-            self.fib.entries = json.loads(data.decode())
-
-    def process_interest(self, tlv_data):
-        #TODO: longest prefix search
-        if self.content_store.entry_exists(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(),
-                           30000 + int(tlv_data[TLVType.ID].decode()))
-
-        if self.pit.node_interest_exists(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT]) is False:
-            self.pit.add_interest(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT])
-            self.forward_interest(tlv_data)
-
-    def forward_interest(self, tlv_data):
-        for node_id in self.fib.get_forwarding_nodes(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id)
-
-    def process_data_packet(self, tlv_data):
-        self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT], tlv_data[TLVType.CONTENT])
-        if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
-            self.forward_data(tlv_data)
-            self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
-
-    def forward_data(self, tlv_data):
-        for node_id in self.pit.pending_interests.get(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(), 30000 + int(node_id))
-
-    def is_socket_connected(self, target_port):
-        try:
-            _, port = self.send_socket.getpeername()
-            if target_port == port:
-                return True
-            else:
-                self.send_socket.close()
-                self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                return False
-        except socket.error:
-            return False
-
-    def simulate_interest_request(self):
-        while True:
-            time.sleep(random.uniform(5, 10))
-            target_node = random.choice([i for i in range(1, 5)]) + self.network_id
-            if target_node != self.id:
-                target_data = random.choice([i for i in range(10)])
-                name = "network" + str(self.network_id) + "/" + str(target_node) + "/Test" + str(target_data)
-
-                port = 30000 + target_node
-                self.send_interest(name.encode(), port)
 
 
