@@ -16,21 +16,21 @@ HEADERSIZE=10
 
 class sensor:
     def __init__(self,sens_id,host,port):
-        #Include a parameter to connect the sensor to a certain node ?
         self.id=sens_id
         self.receive_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.send_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host=host
         self.port=port
-        #remplacer le storage par pandas pour d'autres data ?
-        #self.storage=pd.
-        #self.storage dico avec nom data généré arbitrairement et valeur ?
         self.storage=[]
+        #To stop the Threads corresponding to a sensor you put it to True
         self.stop=False
+        #Send their data to the connected node every x seconds
         self.frequency_send=20
+        #Generate one new object every x seconds
         self.frequency_gen=9
         self.maxstorage=10
 
+#Generate function for random float values between 0 and 1
     """
     def generate(self):
         while not self.stop:
@@ -39,15 +39,14 @@ class sensor:
                 self.storage.pop(0)
             self.storage.append(data)
             time.sleep(self.frequency_gen)
-    """        
+    """   
+#Generate function for random captcha folder     
     def generate(self):
         cap=os.listdir("C://Users/rombo/Desktop/Trinity/Cours/Scalable Computing/Project 3/Captcha")
         while not self.stop:
             filename=random.choice(cap)
             data=cv2.imread(os.path.join("C://Users/rombo/Desktop/Trinity/Cours/Scalable Computing/Project 3/Captcha", filename))
-            if len(self.storage)>self.maxstorage-1:
-                self.storage.pop(0)
-            self.storage.append(data)
+            self.receive(data)
             time.sleep(self.frequency_gen)
 
     def connect(self,host,port):
@@ -91,20 +90,25 @@ class sensor:
                     i+=1
                 connection.close()
     
+    #Designed to remove the oldest object in the storage if max storage capacity is reached before adding new object
     def receive(self,obj):
         if len(self.storage)>self.maxstorage-1:
             self.storage.pop(0)
         self.storage.append(obj)
     
+    #Function used to send data to the node to which the sensor is connected
     def send_data(self):
         n=len(self.storage)
         print(f"sending from sensor {self.id}")
         for i in range(n): 
+            #First part of the message is a header with the number of objects that are going to be sent, the rest is one object
             msg=bytes(f'{n:<{HEADERSIZE}}',"utf-8")+pickle.dumps(self.storage.pop(0))
             self.send_socket.send(msg)
+        #close the sending socket and create a new one for the future operations
         self.send_socket.close()
         self.send_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
+    #Main function which basically starts a sensor and make him automatically generate and send data to a node 
     def transmit(self,host,port):
         threading.Thread(target=self.generate).start()
         while not self.stop:
