@@ -113,10 +113,14 @@ class Node:
             self.send_interest(tlv_data[TLVType.NAME_COMPONENT], send_socket)
 
     def process_data_packet(self, tlv_data):
-        self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT], tlv_data[TLVType.CONTENT])
-        if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
-            self.forward_data(tlv_data)
-            self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
+        if self.verify_message(tlv_data[TLVType.CONTENT], tlv_data[TLVType.SIGNATURE], tlv_data[TLVType.NAME_COMPONENT].decode()):
+            print("Data packet verified")
+            self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT], tlv_data[TLVType.CONTENT])
+            if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
+                self.forward_data(tlv_data)
+                self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
+        else:
+            print("Data packet not verified")
 
     def forward_data(self, tlv_data):
         for node_id in self.pit.pending_interests.get(tlv_data[TLVType.NAME_COMPONENT].decode()):
