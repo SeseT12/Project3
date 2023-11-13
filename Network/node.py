@@ -28,7 +28,10 @@ class Node:
         #TODO
         self.content_store = ContentStore()
         for i in range(10):
-            self.content_store.add_content("network" + str(self.network_id) + "/" + str(self.id) + "/Test" + str(i), "TestString" + str(i))
+            name = "network" + str(self.network_id) + "/" + str(self.id) + "/Test" + str(i)
+            data = "TestString" + str(i)
+            data_packet = DataPacket.encode(name.encode(), data.encode())
+            self.content_store.add_content(data_packet)
 
         self.adj_matrix = None
 
@@ -52,9 +55,11 @@ class Node:
         send_socket.send(interest_packet_to_send)
         send_socket.close()
 
-    def send_data(self, name, port):
-        content_data = self.content_store.content.get(name)
-        data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode())
+    def send_data(self, interest_packet):
+        tlv_data = InterestPacket.decode_tlv(interest_packet)
+        port = 30000 + int(tlv_data[TLVType.ID].decode())
+
+        data_packet_to_send = self.content_store.get(interest_packet)
         send_socket = self.connect('localhost', port)
         send_socket.send(data_packet_to_send)
         send_socket.close()
@@ -95,19 +100,20 @@ class Node:
         print(tlv_data)
         if TLVType.INTEREST_PACKET in tlv_data:
             print("Interest Packet")
-            self.process_interest(tlv_data)
+            self.process_interest(data)
         if TLVType.DATA_PACKET in tlv_data:
             print("Data Packet " + str(self.id))
-            self.process_data_packet(tlv_data)
+            self.process_data_packet(data, tlv_data)
         if len(tlv_data) == 0:
-            self.fib.entries = json.loads(data.decode())
+            self.fib.entries = json.loads(data.decode()) # What's going on here?
 
-    def process_interest(self, tlv_data):
+    def process_interest(self, interest_packet):
         #TODO: longest prefix search
-        if self.content_store.entry_exists(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(),
-                           30000 + int(tlv_data[TLVType.ID].decode()))
+        if self.content_store.entry_exists(interest_packet): #tlv_data[TLVType.NAME_COMPONENT].decode()):
+            self.send_data(interest_packet)
 
+        # TODO: adjust this accordingly
+        tlv_data = InterestPacket.decode_tlv(interest_packet)
         if self.pit.node_interest_exists(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT]) is False:
             self.pit.add_interest(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT])
             self.forward_interest(tlv_data)
@@ -117,8 +123,8 @@ class Node:
             #send_socket = self.connect('localhost', 30000 + node_id)
             self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id)
 
-    def process_data_packet(self, tlv_data):
-        self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT], tlv_data[TLVType.CONTENT])
+    def process_data_packet(self, data_packet, tlv_data):
+        self.content_store.add_content(data_packet) #(tlv_data[TLVType.NAME_COMPONENT], tlv_data[TLVType.CONTENT])
         if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
             self.forward_data(tlv_data)
             self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
@@ -149,6 +155,6 @@ class Node:
                 name = "network" + str(self.network_id) + "/" + str(target_node) + "/Test" + str(target_data)
 
                 port = 30000 + target_node
-                self.send_interest(name.encode(), port)
+                self.send_interest(name.encode(), port) # Is name.encode() necessary here?
 
 
