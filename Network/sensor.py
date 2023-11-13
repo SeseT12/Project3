@@ -76,7 +76,9 @@ class sensor:
     def handle(self,connection,client_address):
                 print("receiving")
                 data = connection.recv(200000)
+                #read the header to know how many objects the socket has to wait for
                 n=int(data[:HEADERSIZE])
+                #read the object
                 decoded=pickle.loads(data[HEADERSIZE:])
                 self.receive(decoded)
                 i=1
