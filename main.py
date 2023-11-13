@@ -23,7 +23,7 @@ def create_router():
 
 if __name__ == '__main__':
     print('Test')
-    keyserver = KeyServer(30000, 0, 10)
+    keyserver = KeyServer(30500, 0, 10)
     """""""""
     p1 = Process(target=create_node, args=(b'Test/', 30001, True, 1))
     p3 = Process(target=create_node, args=(b'Test/', 30002, False, 2))
