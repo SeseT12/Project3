@@ -1,11 +1,19 @@
 import socket
 import threading
+import time
 from Network.interest_packet import InterestPacket
+from Network.key_packet import KeyPacket
 from Utils.tlv_types import TLVType
 from Network.pending_interest_table import PendingInterestTable
 from Network.forwarding_information_base import ForwardingInformationBase
 from Network.content_store import ContentStore
 from Network.data_packet import DataPacket
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization
+
+KEY_SERVER_HOST = 'localhost'
+KEY_SERVER_PORT = 30000 #fix these values when we have them
 
 class Node:
     def __init__(self, port, node_id):
@@ -28,6 +36,8 @@ class Node:
         self.private_key = ec.generate_private_key(
             ec.SECP384R1()
             )
+        self.keys = {}
+        self.register_key()
 
         #TODO
         self.connections = {1: 30001, 2: 30002}
@@ -48,7 +58,8 @@ class Node:
 
     def send_data(self, name, port):
         content_data = self.content_store.content.get(name)
-        data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode())
+        content_signature = self.sign_message(content_data)
+        data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode(), content_signature)
         send_socket = self.connect('localhost', port)
         send_socket.send(data_packet_to_send)
         send_socket.close()
@@ -132,29 +143,70 @@ class Node:
 
     def verify_message(self, message, signature, sender_name):
         if sender_name in self.keys:
-            sender_key = self.keys[sender_key]
+            sender_key = self.keys[sender_name]
         else:
             sender_key = self.get_key(sender_name)
-        return sender_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+        sender_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+        return True
 
-    def get_key(sender_name):
+    def verify_first_message(self, message, signature): # this should be for adding keys, so message should be the key
+        public_key = serialization.load_pem_public_key(message)
+        public_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+        return True
+
+    def get_key(self, sender_name):
         # contact keyserver for public key
-        key_request_packet = KeyPacket.encode_request(self.id, sender_name)
+        signature = self.sign_message(sender_name)
+        key_request_packet = KeyPacket.encode_request(str(self.id).encode(), sender_name.encode(), signature)
         try:
-            keyserver_socket = self.connect(KEY_SERVER_HOST, KEY_SERVER_ID)
+            keyserver_socket = self.connect(KEY_SERVER_HOST, KEY_SERVER_PORT)
             keyserver_socket.send(key_request_packet)
-            sleep(1) # can reduce this, also need to have a fail case
+            time.sleep(1) # can reduce this, also need to have a fail case
             reply = keyserver_socket.recv(1024)
             if not reply:
-                pass
+                keyserver_socket.close()
+                return "No reply from keyserver"
             data = KeyPacket.decode_tlv(reply)
             content = data[TLVType.CONTENT]
             signature = data[TLVType.SIGNATURE]
             if self.verify_message(content, signature, "keyserver"):
-                return data[TLVType.CONTENT]
-            return node_interest_exists
+                public_key = serialization.load_pem_public_key(content)
+                self.keys[sender_name] = public_key
+                keyserver_socket.close()
+                return content
+            else:
+                keyserver_socket.close()
+                return "Invalid signature"
+
         except Exception as e:
             raise e
 
+    def register_key(self):
+        serialized_public = self.private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        signature = self.sign_message(serialized_public)
+        key_packet = KeyPacket.encode_key(str(self.id).encode(), serialized_public, signature)
+        try:
+            keyserver_socket = self.connect(KEY_SERVER_HOST, KEY_SERVER_PORT)
+            keyserver_socket.send(key_packet)
+            print("Node {} sent key to keyserver".format(self.id))
+            reply = keyserver_socket.recv(1024)
+            if not reply:
+                keyserver_socket.close()
+                return "No reply from keyserver"
+            data = DataPacket.decode_tlv(reply)
+            content = data[TLVType.CONTENT]
+            signature = data[TLVType.SIGNATURE]
+            if self.verify_first_message(content, signature):
+                public_key = serialization.load_pem_public_key(content)
+                self.keys["keyserver"] = public_key
+                keyserver_socket.close()
+                return "Key registered"
+            else:
+                keyserver_socket.close()
+                return "Invalid signature"
 
-
+        except Exception as e:
+            raise e

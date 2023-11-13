@@ -11,3 +11,4 @@ class TLVType(IntEnum):
     KEY_PACKET = int(0X0F)
     KEY_REQUEST_PACKET = int(0X0E)
     ACK_PACKET = int(0X0D)
+    SIGNATURE = int(0X17)

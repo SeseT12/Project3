@@ -3,13 +3,13 @@ from Utils.tlv_types import TLVType
 
 class DataPacket:
     @staticmethod
-    def encode(name, content_data):
+    def encode(name, content_data, signature):
         name_component_tlv = tlv.encode_tlv(TLVType.NAME_COMPONENT, name)
         name_tlv = tlv.encode_tlv(TLVType.NAME, name_component_tlv)
         #id_tlv = tlv.encode_tlv(TLVType.ID, str(node_id).encode())
         content_tlv = tlv.encode_tlv(TLVType.CONTENT, content_data)
-        data_packet_tlv = tlv.encode_tlv(TLVType.DATA_PACKET, content_tlv + name_tlv)
-
+        signature_tlv = tlv.encode_tlv(TLVType.SIGNATURE, signature)
+        data_packet_tlv = tlv.encode_tlv(TLVType.DATA_PACKET, content_tlv + name_tlv + signature_tlv)
         return data_packet_tlv
 
     @staticmethod
