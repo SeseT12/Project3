@@ -9,6 +9,7 @@ from Network.pending_interest_table import PendingInterestTable
 from Network.forwarding_information_base import ForwardingInformationBase
 from Network.content_store import ContentStore
 from Network.data_packet import DataPacket
+from Network.sensor import sensor
 
 import json
 import select
@@ -35,7 +36,10 @@ class Node:
 
         self.init_server()
         self.start()
-
+        
+        #Initialize the sensors for this node
+        #sensor.create_sensors(8,'localhost',self.port)
+        
     def start(self):
         threading.Thread(target=self.run).start()
         threading.Thread(target=self.simulate_interest_request()).start()
