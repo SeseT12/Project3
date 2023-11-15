@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 15 10:21:10 2023
-
-@author: rombo
-"""
-
 import random
 import socket
 import time
