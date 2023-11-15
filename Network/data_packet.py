@@ -6,7 +6,7 @@ class DataPacket:
     def encode(name, network_id, node_id, content_data, signature=b'NOSIG'):
         name_component_tlv = tlv.encode_tlv(TLVType.NAME_COMPONENT, name)
         name_tlv = tlv.encode_tlv(TLVType.NAME, name_component_tlv)
-        network_name_id = str(network_id) + str(node_id)
+        network_name_id = str(network_id) + "/" + str(node_id)
         id_tlv = tlv.encode_tlv(TLVType.ID, network_name_id.encode())
         content_tlv = tlv.encode_tlv(TLVType.CONTENT, content_data)
         signature_tlv = tlv.encode_tlv(TLVType.SIGNATURE, signature)

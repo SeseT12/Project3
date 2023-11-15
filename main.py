@@ -19,7 +19,7 @@ def create_node(message, port, send, node_id):
     new_node = node.Node(port, node_id)
     if send is True:
         send_socket = new_node.connect('localhost', 30002)
-        new_node.send_interest(message, send_socket)
+        new_node.send_interest(message, send_socket, str(new_node.network_id) + str(new_node.node_id))
         send_socket.close()
 
 

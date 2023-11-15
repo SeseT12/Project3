@@ -21,7 +21,9 @@ class KeyServer(Node):
     def get_key(self, name):
         if name in self.keyserver:
             return self.keyserver[name]
-        return "No server found"
+        print("No key found for node ", name)
+        #print keys of keyserver
+        return "No key found"
 
     def run(self):
         try:
