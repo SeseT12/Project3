@@ -231,6 +231,7 @@ class Node:
             sender_key = serialization.load_pem_public_key(sender_key)
         try:
             sender_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+        except:
             return False
         return True
 
