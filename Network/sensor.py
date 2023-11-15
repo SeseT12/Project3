@@ -5,10 +5,12 @@ import threading
 import os
 import cv2
 import string
-from Network.data_packet import DataPacket
+from data_packet import DataPacket
 import json
-from Utils.Npencoder import NpEncoder
-from Utils.tlv_types import TLVType
+from Npencoder import NpEncoder
+from tlv_types import TLVType
+
+typelist=["float","integer","string","timestamp","dic"]
 
 def random_name(length):
     characters = string.ascii_letters + string.digits
@@ -129,8 +131,7 @@ class sensor:
         print(f"sending from sensor {self.id}")
             #First part of the message is a header with the number of objects that are going to be sent, the rest is one object
         obj=self.storage.pop(0)
-        name="crouton"
-        #name=random_name(10)
+        name=random_name(10)
         packet=DataPacket.encode(name.encode(),obj.encode())
         msg=packet
         self.send_socket.send(msg)
@@ -151,6 +152,13 @@ class sensor:
     
     def start(self,host,port):
         threading.Thread(target=self.transmit,args=(host,port)).start()
+    
+    def create_sensors(number,host,port):
+        sens_type=random.choice(typelist)
+        for i in range(number):
+            new_sensor=sensor(i+1,sens_type,'',1234)
+            new_sensor.start(host,port)
+            time.sleep(0.7)
     
 
             
