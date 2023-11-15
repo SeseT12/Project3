@@ -3,7 +3,7 @@ from Utils.tlv_types import TLVType
 
 class DataPacket:
     @staticmethod
-    def encode(name, network_id, node_id, content_data, signature):
+    def encode(name, network_id, node_id, content_data, signature=b'NOSIG'):
         name_component_tlv = tlv.encode_tlv(TLVType.NAME_COMPONENT, name)
         name_tlv = tlv.encode_tlv(TLVType.NAME, name_component_tlv)
         network_name_id = str(network_id) + str(node_id)

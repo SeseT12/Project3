@@ -57,10 +57,13 @@ class KeyServer(Node):
 
     def send_key(self, name, send_socket):
         key = self.get_key(name)
-        serialized_public = key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        ) # turns the key into bytes
+        if type(key) is str:
+            serialized_public = b'NOKEY' # in case no key is found
+        else:
+            serialized_public = key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            ) # turns the key into bytes
 
         key_signature = self.sign_message(serialized_public)
         key_packet = KeyPacket.encode_key(name.encode() if type(name) is str else name, serialized_public, key_signature)

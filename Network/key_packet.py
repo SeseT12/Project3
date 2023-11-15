@@ -10,7 +10,6 @@ class KeyPacket:
         key_tlv = tlv.encode_tlv(TLVType.CONTENT, keydata)
         signature_tlv = tlv.encode_tlv(TLVType.SIGNATURE, signature)
         it_packet_tlv = tlv.encode_tlv(TLVType.KEY_PACKET, key_tlv + name_tlv + signature_tlv)
-
         return it_packet_tlv
 
     @staticmethod

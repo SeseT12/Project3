@@ -68,7 +68,7 @@ class Node:
     def send_data(self, name, port):
         content_data = self.content_store.content.get(name)
         content_signature = self.sign_message(content_data)
-        data_packet_to_send = DataPacket.encode(self.network_id, self.id, name.encode(), content_data.encode(), content_signature)
+        data_packet_to_send = DataPacket.encode(name.encode(), self.network_id, self.id, content_data.encode(), content_signature)
         send_socket = self.connect('localhost', port)
         send_socket.send(data_packet_to_send)
         send_socket.close()
@@ -139,7 +139,7 @@ class Node:
                 self.send_interest(name.encode(), port)
 
     def process_data_packet(self, tlv_data):
-        if self.verify_message(tlv_data[TLVType.CONTENT], tlv_data[TLVType.SIGNATURE], tlv_data[TLVType.NAME_COMPONENT].decode()):
+        if self.verify_message(tlv_data[TLVType.CONTENT], tlv_data[TLVType.SIGNATURE], tlv_data[TLVType.NAME_COMPONENT].decode(), tlv_data[TLVType.ID].decode()):
             print("Data packet verified")
             self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT], tlv_data[TLVType.CONTENT])
             if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
@@ -173,17 +173,38 @@ class Node:
         )
         return sig
 
-    def verify_message(self, message, signature, sender_name):
-        if sender_name in self.keys:
-            sender_key = self.keys[sender_name]
+    def verify_message(self, message, signature, sender_name, id):
+        if signature == b'NOSIG':
+            return True
+        if id in self.keys:
+            sender_key = self.keys[id]
         else:
-            sender_key = self.get_key(sender_name)
+            sender_key = self.get_key(id)
+            if sender_key == "No key found":
+                for i in range(3):
+                    time.sleep(0.2)
+                    sender_key = self.get_key(id)
+                    if sender_key != "No key found":
+                        break
+                if sender_key == "No key found":
+                    print("No key found")
+                    return False
         if type(sender_key) is bytes:
             sender_key = serialization.load_pem_public_key(sender_key)
-        sender_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+        try:
+            sender_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+        except:
+            print("Invalid signature")
+            print("Message: ", message)
+            print("Signature: ", signature)
+            print("Sender: ", sender_name)
+            print("Sender key: ", sender_key)
+            return False
         return True
 
     def verify_first_message(self, message, signature): # this should be for adding keys, so message should be the key
+        if signature == b'NOSIG': # for sensors
+            return True
         public_key = serialization.load_pem_public_key(message)
         public_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
         return True
@@ -203,7 +224,10 @@ class Node:
             data = KeyPacket.decode_tlv(reply)
             content = data[TLVType.CONTENT]
             signature = data[TLVType.SIGNATURE]
-            if self.verify_message(content, signature, "keyserver"):
+            if self.verify_message(content, signature, "keyserver", "keyserver"):
+                if content == b'NOKEY':
+                    keyserver_socket.close()
+                    return "No key found"
                 public_key = serialization.load_pem_public_key(content)
                 self.keys[sender_name] = public_key
                 keyserver_socket.close()
@@ -221,7 +245,8 @@ class Node:
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
         signature = self.sign_message(serialized_public)
-        key_packet = KeyPacket.encode_key(str(self.id).encode(), serialized_public, signature)
+        network_name_id = str(self.network_id) + str(self.id)
+        key_packet = KeyPacket.encode_key(network_name_id.encode(),  serialized_public, signature)
         try:
             keyserver_socket = self.connect(KEY_SERVER_HOST, KEY_SERVER_PORT)
             keyserver_socket.send(key_packet)
