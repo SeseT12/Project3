@@ -49,24 +49,28 @@ class Node:
     def send_interest(self, data, port):
         interest_packet_to_send = InterestPacket.encode(data, self.id)
         send_socket = self.connect('localhost', port)
-        send_socket.send(interest_packet_to_send)
+        with threading.Lock():
+            send_socket.send(interest_packet_to_send)
+        send_socket.shutdown(socket.SHUT_RD)
         send_socket.close()
-        print("Sent Interest Packet to " + str(port))
+        print(str(self.id) + ": Sent Interest Packet to " + str(port))
 
     def send_data(self, name, port):
         content_data = self.content_store.content.get(name)
         data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode())
         send_socket = self.connect('localhost', port)
-        send_socket.send(data_packet_to_send)
+        with threading.Lock():
+            send_socket.send(data_packet_to_send)
+        send_socket.shutdown(socket.SHUT_RD)
         send_socket.close()
-        print("Sent Data Packet to " + str(port))
+        print(str(self.id) + ": Sent Data Packet to " + str(port))
 
     def init_server(self):
         """Initialization of the TCP/IP server to receive connections. It binds to the given host and port."""
         print("Initialisation of the Node on port: " + str(self.port) + " on node (" + str(self.id) + ")")
         self.receive_socket.bind(('', self.port))
         self.receive_socket.settimeout(10.0)
-        self.receive_socket.listen(1)
+        self.receive_socket.listen(5)
 
     def run(self):
         try:
@@ -77,45 +81,52 @@ class Node:
 
                 if self.receive_socket in readable:
                     connection, client_address = self.receive_socket.accept()
-                    data = connection.recv(1024)
-                    if data:
-                        threading.Thread(target=self.receive_message, args=(data,)).start()
+                    message_process_thread = threading.Thread(target=self.receive_message, args=(connection,))
+                    message_process_thread.start()
+                    #message_process_thread.join()
 
         except Exception as e:
             raise e
 
-    def receive_message(self, data):
-        self.process_message(data)
+    def receive_message(self, connection):
+        with threading.Lock():
+            while True:
+                data = connection.recv(1024)
+                if data:
+                    self.process_message(data)
+                else:
+                    break
 
     def process_message(self, data):
         #TODO: works for interest + data packet, move to tlv
         tlv_data = InterestPacket.decode_tlv(data)
         if TLVType.INTEREST_PACKET in tlv_data:
-            print("Received Interest Packet")
             self.process_interest(tlv_data)
+            print(str(self.id) + ": Received Interest Packet from " + tlv_data[TLVType.ID].decode())
         if TLVType.DATA_PACKET in tlv_data:
-            print("Received Data Packet")
             self.process_data_packet(tlv_data)
+            print(str(self.id) + ": Received Data Packet")
         if len(tlv_data) == 0:
-            print("Received FIB")
+            #print("Received FIB")
             self.fib.entries = json.loads(data.decode())
 
     def process_interest(self, tlv_data):
-        #TODO: longest prefix search
         if self.content_store.entry_exists(tlv_data[TLVType.NAME_COMPONENT].decode()):
             self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(),
                            30000 + int(tlv_data[TLVType.ID].decode()))
 
-        if self.pit.node_interest_exists(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT]) is False:
+        elif self.pit.node_interest_exists(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT]) is False:
             self.pit.add_interest(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT])
             self.forward_interest(tlv_data)
 
     def forward_interest(self, tlv_data):
         for node_id in self.fib.get_forwarding_nodes(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id)
+            if self.pit.node_interest_exists(str(node_id).encode(), tlv_data[TLVType.NAME_COMPONENT]) is False:
+                self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id)
+                time.sleep(1)
 
     def process_data_packet(self, tlv_data):
-        self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT], tlv_data[TLVType.CONTENT])
+        self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT].decode(), tlv_data[TLVType.CONTENT].decode())
         if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
             self.forward_data(tlv_data)
             self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
@@ -130,21 +141,42 @@ class Node:
             if target_port == port:
                 return True
             else:
-                self.send_socket.close()
+                #self.send_socket.close()
+                print(str(self.id) + ": Close")
                 self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 return False
         except socket.error:
             return False
 
     def simulate_interest_request(self):
+        time.sleep(5)
+        print("simulate interest: " + str(self.network_id))
         while True:
             time.sleep(random.uniform(5, 10))
-            target_node = random.choice([i for i in range(1, 5)]) + self.network_id
-            if target_node != self.id:
-                target_data = random.choice([i for i in range(10)])
-                name = "network" + str(self.network_id) + "/" + str(target_node) + "/Test" + str(target_data)
+            #target_node = random.choice([i for i in range(1, 5)]) + 31#self.network_id
+            #network_id = self.network_id
+            print(self.fib.entries)
+            name = random.choice(self.fib.entries)[0]
 
-                port = 30000 + target_node
-                self.send_interest(name.encode(), port)
+            if len(name.split("/")) < 3:
+                network_id = int(name.split("/")[0].split("network")[1])
+                name += str(random.choice([i for i in range(1, 5)]) + network_id) + "/"
 
+            target_data = random.choice([i for i in range(10)])
+            name += "Test" + str(target_data)
+            print("Node " + str(self.id) + " expressed Interest in: " + name)
+            for node_id in self.fib.get_forwarding_nodes(name):
+                print(self.fib.get_forwarding_nodes(name))
+                self.send_interest(name.encode(), 30000 + node_id)
+            #port = 30000 + int((name.split("/")[0] + "/")[0])
+            """""""""""
+            target_data = random.choice([i for i in range(10)])
+            name = "network" + str(network_id) + "/" + str(target_node) + "/Test" + str(target_data)
+
+            port = 30000 + target_node
+            #self.send_interest(name.encode(), port)
+            port = 30000 + int(self.fib.get_forwarding_nodes(name.split("/")[0] + "/")[0])
+            print("send simulate")
+            self.send_interest(name.encode(), port)
+            """""""""""
 

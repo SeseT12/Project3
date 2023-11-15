@@ -22,4 +22,5 @@ class PendingInterestTable:
         return False
 
     def remove_interest(self, name):
-        del self.pending_interests[name]
+        if name in self.pending_interests.keys():
+            del self.pending_interests[name]

@@ -8,3 +8,4 @@ class TLVType(IntEnum):
     NAME_COMPONENT = int(0X08)
     ID = int(0x01)
     CONTENT = int(0x15)
+    ADJ_LIST = int(0x03)

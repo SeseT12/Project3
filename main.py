@@ -1,8 +1,14 @@
+import os.path
+
 from Network import node
 from Network import router
 from Network.central_node import CentralNode
+from Network.global_node import GlobalNode
+from Network.forwarding_information_base import ForwardingInformationBase
 from multiprocessing import Process
+from Utils.shortest_path import get_next_node
 import time
+import numpy as np
 
 
 def create_node(message, port, send, node_id):
@@ -38,9 +44,19 @@ if __name__ == '__main__':
     print(decode_tlv(test_ip))
     print(InterestPacket.decode_tlv(test_ip))
     """""""""
-    central_node = CentralNode(1)
+    #central_node = CentralNode(1)
+    #for i in range(5):
+    #    central_node.add_node()
+
+    global_node = GlobalNode()
     for i in range(5):
-        central_node.add_node()
+        global_node.add_network()
+        time.sleep(1)
+
+    #central_node = CentralNode(1)
+    #test = np.array([[0, 0, 0, 1, 1], [0, 0, 0, 1, 1], [0, 0, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 0, 0, 0]])
+    #for i in range(5):
+    #    print(central_node.create_fib(test, i).entries)
 
     #send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     #send_socket.connect(('localhost', 33003))
