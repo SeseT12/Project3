@@ -90,7 +90,8 @@ class CentralNode:
 
     def send_data(self, name, port):
         content_data = self.content_store.content.get(name)
-        data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode())
+        # content_signature = self.sign_message(content_data)
+        data_packet_to_send = DataPacket.encode(name.encode(), self.network_id, 0, content_data.encode())
         send_socket = self.connect('localhost', port)
         send_socket.send(data_packet_to_send)
         send_socket.close()
