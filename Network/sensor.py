@@ -5,10 +5,10 @@ import threading
 import os
 import cv2
 import string
-from data_packet import DataPacket
+from Network.data_packet import DataPacket
 import json
-from Npencoder import NpEncoder
-from tlv_types import TLVType
+from Utils.Npencoder import NpEncoder
+from Utils.tlv_types import TLVType
 
 typelist=["float","integer","string","timestamp","dic"]
 
