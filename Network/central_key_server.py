@@ -51,7 +51,7 @@ class KeyServer(Node):
     def send_ack(self, send_socket):
         ACK_message = b'ACK'
         signed_message = self.sign_message(ACK_message)
-        ACK_packet = DataPacket.encode(b'keyserver', ACK_message, signed_message)
+        ACK_packet = DataPacket.encode(self.network_id, self.id, b'keyserver', ACK_message, signed_message)
         send_socket.send(ACK_packet)
         send_socket.close()
 
@@ -63,7 +63,7 @@ class KeyServer(Node):
         ) # turns the key into bytes
 
         key_signature = self.sign_message(serialized_public)
-        key_packet = KeyPacket.encode_key(name.encode(), serialized_public, key_signature)
+        key_packet = KeyPacket.encode_key(name.encode() if type(name) is str else name, serialized_public, key_signature)
         send_socket.send(key_packet)
         send_socket.close()
 

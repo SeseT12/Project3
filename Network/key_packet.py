@@ -5,7 +5,7 @@ class KeyPacket:
 
     @staticmethod
     def encode_key(name, keydata, signature):
-        name_component_tlv = tlv.encode_tlv(TLVType.NAME_COMPONENT, name)
+        name_component_tlv = tlv.encode_tlv(TLVType.NAME_COMPONENT, name) # actually id of the node:w
         name_tlv = tlv.encode_tlv(TLVType.NAME, name_component_tlv)
         key_tlv = tlv.encode_tlv(TLVType.CONTENT, keydata)
         signature_tlv = tlv.encode_tlv(TLVType.SIGNATURE, signature)

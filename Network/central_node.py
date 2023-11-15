@@ -5,6 +5,7 @@ import numpy as np
 import threading
 import socket
 import json
+import time
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -45,6 +46,7 @@ class CentralNode:
             #self.nodes.get(self.network_id + i + 1).adj_matrix = adj_matrix
 
     def distribute_fib(self, adj_matrix):
+        time.sleep(1)
         for i in range(len(self.nodes)):
             send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             send_socket.connect(('localhost', 30000 + self.network_id + i + 1))

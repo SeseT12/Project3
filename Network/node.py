@@ -68,7 +68,7 @@ class Node:
     def send_data(self, name, port):
         content_data = self.content_store.content.get(name)
         content_signature = self.sign_message(content_data)
-        data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode(), content_signature)
+        data_packet_to_send = DataPacket.encode(self.network_id, self.id, name.encode(), content_data.encode(), content_signature)
         send_socket = self.connect('localhost', port)
         send_socket.send(data_packet_to_send)
         send_socket.close()
@@ -165,6 +165,8 @@ class Node:
             return False
 
     def sign_message(self, message):
+        if type(message) is str:
+            message = message.encode()
         sig = self.private_key.sign(
             message,
             ec.ECDSA(hashes.SHA256())
@@ -176,6 +178,8 @@ class Node:
             sender_key = self.keys[sender_name]
         else:
             sender_key = self.get_key(sender_name)
+        if type(sender_key) is bytes:
+            sender_key = serialization.load_pem_public_key(sender_key)
         sender_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
         return True
 
