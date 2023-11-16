@@ -63,35 +63,36 @@ class CentralNode:
         tlv_data = InterestPacket.decode_tlv(data)
         if TLVType.INTEREST_PACKET in tlv_data:
             print("Received Interest Packet")
-            self.process_interest(tlv_data)
+            self.process_interest(data)
         if TLVType.DATA_PACKET in tlv_data:
             print("Received Data Packet")
-            self.process_data_packet(tlv_data)
+            self.process_data_packet(data, tlv_data)
         if TLVType.ADJ_LIST in tlv_data:
             self.process_adj_list_packet(tlv_data)
             # self.fib.entries = json.loads(data.decode())
 
-    def process_interest(self, tlv_data):
+    def process_interest(self, interest_packet):
         # TODO: longest prefix search
-        if self.content_store.entry_exists(tlv_data[TLVType.NAME_COMPONENT].decode()):
+        tlv_data = InterestPacket.decode_tlv(interest_packet)
+        if self.content_store.entry_exists(interest_packet):
             if tlv_data[TLVType.ID] in self.nodes:
-                self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(),
-                               30000 + int(tlv_data[TLVType.ID].decode()))
+                self.send_data(interest_packet)
             else:
                 network_id = int(tlv_data[TLVType.NAME_COMPONENT].decode().split("/")[0].split("network")[1])
                 if network_id != self.network_id:
                     next_network_router_id = get_next_node(self.network_id, network_id, self.network_adj_list)
                     if next_network_router_id is not None:
-                        self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(), 30000 + next_network_router_id)
+                        self.send_data(interest_packet)
 
         if self.pit.node_interest_exists(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT]) is False:
             self.pit.add_interest(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT])
             self.forward_interest(tlv_data)
 
-    def send_data(self, name, port):
-        content_data = self.content_store.content.get(name)
-        # content_signature = self.sign_message(content_data)
-        data_packet_to_send = DataPacket.encode(name.encode(), self.network_id, 0, content_data.encode())
+    def send_data(self, interest_packet, port=-1):
+        tlv_data = InterestPacket.decode_tlv(interest_packet)
+        if port == -1:
+            port = 30000 + int(tlv_data[TLVType.ID].decode())
+        data_packet_to_send = self.content_store.get(interest_packet)
         send_socket = self.connect('localhost', port)
         send_socket.send(data_packet_to_send)
         send_socket.close()
@@ -120,15 +121,16 @@ class CentralNode:
         send_socket.close()
         print("Router: Sent Interest Packet to " + str(port))
 
-    def process_data_packet(self, tlv_data):
-        self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT].decode(), tlv_data[TLVType.CONTENT].decode())
+    def process_data_packet(self, data_packet, tlv_data):
+        self.content_store.add_content(data_packet)
         if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
-            self.forward_data(tlv_data)
+            self.forward_data(data_packet, tlv_data)
             self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
 
-    def forward_data(self, tlv_data):
+    def forward_data(self, data_packet, tlv_data):
         for node_id in self.pit.pending_interests.get(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(), 30000 + int(node_id))
+            port = (30000 + int(node_id))
+            self.send_data(data_packet, port)
 
     def process_adj_list_packet(self, tlv_data):
         self.network_adj_list = json.loads(tlv_data[TLVType.ADJ_LIST].decode(), object_hook=json_keys_to_int)
