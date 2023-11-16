@@ -13,7 +13,10 @@ class KeyServer(Node):
     def __init__(self, port, id, network_id):
         super(KeyServer, self).__init__(port, id, network_id)
         self.keyserver = {}
-        self.keyserver['keyserver'] = self.private_key.public_key()
+        self.keyserver['keyserver'] = self.private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
 
     def add_network(self, name, key):
         self.keyserver[name] = key
@@ -36,8 +39,8 @@ class KeyServer(Node):
                     content = data[TLVType.CONTENT]
                     signature = data[TLVType.SIGNATURE]
                     if self.verify_first_message(content, signature):
-                        public_key = serialization.load_pem_public_key(content)
-                        self.add_network(data[TLVType.NAME].decode(), public_key)
+                        # public_key = serialization.load_pem_public_key(content)
+                        self.add_network(data[TLVType.NAME].decode(), content)
                         print("Added key for node ", data[TLVType.NAME].decode())
                         self.send_key('keyserver', connection)
 
@@ -59,13 +62,10 @@ class KeyServer(Node):
 
     def send_key(self, name, send_socket):
         key = self.get_key(name)
-        if type(key) is str:
+        if key == "No key found":
             serialized_public = b'NOKEY' # in case no key is found
         else:
-            serialized_public = key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
-            ) # turns the key into bytes
+            serialized_public = key
 
         key_signature = self.sign_message(serialized_public)
         key_packet = KeyPacket.encode_key(name.encode() if type(name) is str else name, serialized_public, key_signature)

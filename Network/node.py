@@ -70,7 +70,6 @@ class Node:
     def send_data(self, name, port):
         content_data = self.content_store.content.get(name)
         content_signature = self.sign_message(content_data)
-        print("Sending data packet with name {} from node {} to node {}".format(name, self.id, port))
         data_packet_to_send = DataPacket.encode(name.encode(), self.network_id, self.id, content_data.encode(), content_signature)
         send_socket = self.connect('localhost', port)
         with threading.Lock():
@@ -202,10 +201,14 @@ class Node:
     def sign_message(self, message):
         if type(message) is str:
             message = message.encode()
-        sig = self.private_key.sign(
-            message,
-            ec.ECDSA(hashes.SHA256())
-        )
+        try:
+            sig = self.private_key.sign(
+                message,
+                ec.ECDSA(hashes.SHA256())
+            )
+        except:
+            print("Broken Message ", message)
+            print("Broken Message Type ", type(message))
         return sig
 
     def verify_message(self, message, signature, sender_name, id):
@@ -228,21 +231,22 @@ class Node:
                     print("No key found")
                     return False
         if type(sender_key) is bytes:
-            sender_key = serialization.load_pem_public_key(sender_key)
+            sender_public_key = serialization.load_pem_public_key(sender_key)
         try:
-            sender_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
-            print("Message verified")
-            print("Message: ", message)
-            print("Signature: ", signature)
-            print("Sender: ", sender_name)
-            print("ID: ", id)
-            print("Sender key: ", sender_key)
+            sender_public_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+            # print("Message verified")
+            # print("Message: ", message)
+            # print("Signature: ", signature)
+            # print("Sender: ", sender_name)
+            # print("ID: ", id)
+            # print("Sender key: ", sender_key)
         except:
             print("Invalid signature")
             print("Message: ", message)
             print("Signature: ", signature)
             print("Sender: ", sender_name)
             print("ID: ", id)
+            print("Own ID: {}/{}".format(self.network_id, self.id))
             print("Sender key: ", sender_key)
             return False
         return True
@@ -258,7 +262,7 @@ class Node:
         # contact keyserver for public key
         signature = self.sign_message(sender_name)
         network_name_id = str(self.network_id) + "/" + str(self.id)
-        key_request_packet = KeyPacket.encode_request(network_name_id.encode(), sender_name.encode(), signature)
+        key_request_packet = KeyPacket.encode_request(sender_name.encode(), sender_name.encode(), signature)
         try:
             keyserver_socket = self.connect(KEY_SERVER_HOST, KEY_SERVER_PORT)
             keyserver_socket.send(key_request_packet)
@@ -274,7 +278,7 @@ class Node:
                 if content == b'NOKEY':
                     keyserver_socket.close()
                     return "No key found"
-                public_key = serialization.load_pem_public_key(content)
+                public_key = content
                 self.keys[sender_name] = public_key
                 keyserver_socket.close()
                 return content
@@ -305,7 +309,8 @@ class Node:
             content = data[TLVType.CONTENT]
             signature = data[TLVType.SIGNATURE]
             if self.verify_first_message(content, signature):
-                public_key = serialization.load_pem_public_key(content)
+                # public_key = serialization.load_pem_public_key(content)
+                public_key = content
                 self.keys["keyserver"] = public_key
                 keyserver_socket.close()
                 return "Key registered"
