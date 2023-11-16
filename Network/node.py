@@ -11,7 +11,8 @@ from Network.pending_interest_table import PendingInterestTable
 from Network.forwarding_information_base import ForwardingInformationBase
 from Network.content_store import ContentStore
 from Network.data_packet import DataPacket
-#from Network.sensor import sensor
+from Network.sensor import sensor
+import Network.sensor
 
 import json
 import select
@@ -30,11 +31,6 @@ class Node:
         self.fib = ForwardingInformationBase()
 
         self.content_store = ContentStore()
-        for i in range(10):
-            name = "network" + str(self.network_id) + "/" + str(self.id) + "/Test" + str(i)
-            data = "TestString" + str(i)
-            data_packet = DataPacket.encode(name.encode(), data.encode())
-            self.content_store.add_content(data_packet)
 
         self.adj_matrix = None
 
@@ -42,7 +38,8 @@ class Node:
         #self.start()
         
         #Initialize the sensors for this node
-        #sensor.create_sensors(8,'localhost',self.port)
+        #sensor.create_sensors(8,'localhost', self.port, self.network_id, self.id)
+        threading.Thread(target=sensor.create_sensors, args=(8, 'localhost', self.port, self.network_id, self.id)).start()
         
     def start(self):
         threading.Thread(target=self.run).start()
@@ -68,9 +65,6 @@ class Node:
             print("Not Connected")
 
     def send_data(self, interest_packet, port=-1):
-        print(self.id)
-        print(self.network_id)
-        print(port)
         if self.adj_matrix is not None and self.adj_matrix[self.id - self.network_id][
             port - self.network_id - 30000] == 1:
             tlv_data = InterestPacket.decode_tlv(interest_packet)
@@ -132,10 +126,10 @@ class Node:
         tlv_data = InterestPacket.decode_tlv(data)
         if TLVType.INTEREST_PACKET in tlv_data:
             self.process_interest(data)
-            print(str(self.id) + ": Received Interest Packet from " + tlv_data[TLVType.ID].decode())
+            #print(str(self.id) + ": Received Interest Packet from " + tlv_data[TLVType.ID].decode())
         if TLVType.DATA_PACKET in tlv_data:
             self.process_data_packet(data, tlv_data)
-            print(str(self.id) + ": Received Data Packet")
+            #print(str(self.id) + ": Received Data Packet")
         if TLVType.FIB in tlv_data:
             self.fib.entries = json.loads(tlv_data[TLVType.FIB].decode(), object_hook=json_keys_to_int)
         if TLVType.ADJ_LIST in tlv_data:
@@ -194,8 +188,10 @@ class Node:
                 network_id = int(name.split("/")[0].split("network")[1])
                 name += str(random.choice([i for i in range(1, 5)]) + network_id) + "/"
 
-            target_data = random.choice([i for i in range(10)])
-            name += "Test" + str(target_data)
+            data_index = random.choice([i for i in range(10)])
+            data_type = random.choice(Network.sensor.typelist)
+            sensor_id = random.choice([i for i in range(8)]) + 1
+            name += data_type + "/" + str(sensor_id) + "/" + str(data_index)
             print("Node " + str(self.id) + " expressed Interest in: " + name)
             for node_id in self.fib.get_forwarding_nodes(name):
                 print(self.fib.get_forwarding_nodes(name))
