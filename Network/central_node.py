@@ -113,12 +113,12 @@ class CentralNode:
         if network_id != self.network_id:
             next_network_router_id = get_next_node(self.network_id, network_id, self.network_adj_list)
             if next_network_router_id is not None:
-                self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + next_network_router_id)
+                self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + next_network_router_id, tlv_data[TLVType.SOURCE])
         else:
-            self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id)
+            self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id, tlv_data[TLVType.SOURCE])
 
-    def send_interest(self, data, port):
-        interest_packet_to_send = InterestPacket.encode(data, self.network_id)
+    def send_interest(self, data, port, source):
+        interest_packet_to_send = InterestPacket.encode(data, self.network_id, source)
         send_socket = self.connect('localhost', port)
         send_socket.send(interest_packet_to_send)
         send_socket.close()
@@ -170,6 +170,7 @@ class CentralNode:
             self.nodes[i].adj_matrix = np.pad(self.node_adj_matrix, (1,0), mode='constant', constant_values=1)
 
     def distribute_fib(self):
+        time.sleep(1)
         for i in range(len(self.node_ids)):
             """""""""
             fib_entries_json = json.dumps(self.create_fib(self.node_adj_matrix, i).entries, cls=NpEncoder)
