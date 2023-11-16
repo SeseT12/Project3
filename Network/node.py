@@ -11,6 +11,7 @@ from Network.pending_interest_table import PendingInterestTable
 from Network.forwarding_information_base import ForwardingInformationBase
 from Network.content_store import ContentStore
 from Network.data_packet import DataPacket
+#from Network.sensor import sensor
 
 import json
 import select
@@ -28,16 +29,21 @@ class Node:
         self.pit = PendingInterestTable()
         self.fib = ForwardingInformationBase()
 
-        #TODO
         self.content_store = ContentStore()
         for i in range(10):
-            self.content_store.add_content("network" + str(self.network_id) + "/" + str(self.id) + "/Test" + str(i), "TestString" + str(i))
+            name = "network" + str(self.network_id) + "/" + str(self.id) + "/Test" + str(i)
+            data = "TestString" + str(i)
+            data_packet = DataPacket.encode(name.encode(), data.encode())
+            self.content_store.add_content(data_packet)
 
         self.adj_matrix = None
 
         self.init_server()
         #self.start()
-
+        
+        #Initialize the sensors for this node
+        #sensor.create_sensors(8,'localhost',self.port)
+        
     def start(self):
         threading.Thread(target=self.run).start()
         threading.Thread(target=self.simulate_interest_request()).start()
@@ -61,18 +67,23 @@ class Node:
         else:
             print("Not Connected")
 
-    def send_data(self, name, port):
-        print("Send data from " + str(self.id) + "to " + str(port))
-        content_data = self.content_store.content.get(name)
+    def send_data(self, interest_packet, port=-1):
+        print(self.id)
+        print(self.network_id)
+        print(port)
         if self.adj_matrix is not None and self.adj_matrix[self.id - self.network_id][
             port - self.network_id - 30000] == 1:
-            data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode())
+            tlv_data = InterestPacket.decode_tlv(interest_packet)
+            if port == -1:
+                port = 30000 + int(tlv_data[TLVType.ID].decode())
+            data_packet_to_send = self.content_store.get(interest_packet)
             send_socket = self.connect('localhost', port)
             with threading.Lock():
                 send_socket.send(data_packet_to_send)
             send_socket.shutdown(socket.SHUT_RD)
             send_socket.close()
             print(str(self.id) + ": Sent Data Packet to " + str(port))
+
         else:
             print("Not Connected")
 
@@ -87,14 +98,22 @@ class Node:
         try:
             print("Node: Wait for incoming connection")
 
-            while True:
-                readable, _, _ = select.select([self.receive_socket], [], [], 10.0)
+            interval_seconds = 5
+            last_run_time = time.time()
 
-                if self.receive_socket in readable:
-                    connection, client_address = self.receive_socket.accept()
-                    message_process_thread = threading.Thread(target=self.receive_message, args=(connection,))
-                    message_process_thread.start()
-                    #message_process_thread.join()
+            while True:
+                    readable, _, _ = select.select([self.receive_socket], [], [], 10.0)
+
+                    if self.receive_socket in readable:
+                        connection, client_address = self.receive_socket.accept()
+                        message_process_thread = threading.Thread(target=self.receive_message, args=(connection,))
+                        message_process_thread.start()
+                        #message_process_thread.join()
+
+                    if time.time() - last_run_time >= interval_seconds:
+                        self.renew_pending_interests()
+                        print("RENEW PIT")
+                        last_run_time = time.time()
 
         except Exception as e:
             raise e
@@ -112,20 +131,21 @@ class Node:
         #TODO: works for interest + data packet, move to tlv
         tlv_data = InterestPacket.decode_tlv(data)
         if TLVType.INTEREST_PACKET in tlv_data:
-            self.process_interest(tlv_data)
+            self.process_interest(data)
             print(str(self.id) + ": Received Interest Packet from " + tlv_data[TLVType.ID].decode())
         if TLVType.DATA_PACKET in tlv_data:
-            self.process_data_packet(tlv_data)
+            self.process_data_packet(data, tlv_data)
             print(str(self.id) + ": Received Data Packet")
         if TLVType.FIB in tlv_data:
             self.fib.entries = json.loads(tlv_data[TLVType.FIB].decode(), object_hook=json_keys_to_int)
         if TLVType.ADJ_LIST in tlv_data:
             self.adj_matrix = np.asarray(json.loads(tlv_data[TLVType.ADJ_LIST].decode()))
 
-    def process_interest(self, tlv_data):
-        if self.content_store.entry_exists(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(),
-                           30000 + int(tlv_data[TLVType.ID].decode()))
+    def process_interest(self, interest_packet):
+        tlv_data = InterestPacket.decode_tlv(interest_packet)
+        if self.content_store.entry_exists(interest_packet): #tlv_data[TLVType.NAME_COMPONENT].decode()):
+            port = (30000 + int(tlv_data[TLVType.ID].decode()))
+            self.send_data(interest_packet, port)
 
         elif self.pit.node_interest_exists(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT]) is False:
             self.pit.add_interest(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT])
@@ -137,15 +157,16 @@ class Node:
                 self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id)
                 time.sleep(1)
 
-    def process_data_packet(self, tlv_data):
-        self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT].decode(), tlv_data[TLVType.CONTENT].decode())
+    def process_data_packet(self, data_packet, tlv_data):
+        self.content_store.add_content(data_packet)
         if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
-            self.forward_data(tlv_data)
+            self.forward_data(data_packet, tlv_data)
             self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
 
-    def forward_data(self, tlv_data):
+    def forward_data(self, data_packet, tlv_data):
         for node_id in self.pit.pending_interests.get(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            self.send_data(tlv_data[TLVType.NAME_COMPONENT].decode(), 30000 + int(node_id))
+            port = (30000 + int(node_id))
+            self.send_data(data_packet, port)
 
     def is_socket_connected(self, target_port):
         try:
@@ -190,4 +211,9 @@ class Node:
             print("send simulate")
             self.send_interest(name.encode(), port)
             """""""""""
+
+    def renew_pending_interests(self):
+        for (node_id, name) in self.pit.get_old_pending_interests():
+            if name in self.content_store.keys:
+                self.send_data(name, node_id + 30000)
 
