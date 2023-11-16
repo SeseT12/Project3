@@ -27,7 +27,6 @@ class Node:
         self.pit = PendingInterestTable()
         self.fib = ForwardingInformationBase()
 
-        #TODO
         self.content_store = ContentStore()
         for i in range(10):
             name = "network" + str(self.network_id) + "/" + str(self.id) + "/Test" + str(i)
@@ -85,14 +84,22 @@ class Node:
         try:
             print("Node: Wait for incoming connection")
 
-            while True:
-                readable, _, _ = select.select([self.receive_socket], [], [], 10.0)
+            interval_seconds = 5
+            last_run_time = time.time()
 
-                if self.receive_socket in readable:
-                    connection, client_address = self.receive_socket.accept()
-                    message_process_thread = threading.Thread(target=self.receive_message, args=(connection,))
-                    message_process_thread.start()
-                    #message_process_thread.join()
+            while True:
+                    readable, _, _ = select.select([self.receive_socket], [], [], 10.0)
+
+                    if self.receive_socket in readable:
+                        connection, client_address = self.receive_socket.accept()
+                        message_process_thread = threading.Thread(target=self.receive_message, args=(connection,))
+                        message_process_thread.start()
+                        #message_process_thread.join()
+
+                    if time.time() - last_run_time >= interval_seconds:
+                        self.renew_pending_interests()
+                        print("RENEW PIT")
+                        last_run_time = time.time()
 
         except Exception as e:
             raise e
@@ -189,4 +196,9 @@ class Node:
             print("send simulate")
             self.send_interest(name.encode(), port)
             """""""""""
+
+    def renew_pending_interests(self):
+        for (node_id, name) in self.pit.get_old_pending_interests():
+            if name in self.content_store.keys:
+                self.send_data(name, node_id + 30000)
 
