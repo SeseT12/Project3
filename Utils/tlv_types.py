@@ -14,3 +14,4 @@ class TLVType(IntEnum):
     ACK_PACKET = int(0X0D)
     SIGNATURE = int(0X17)
     SOURCE = int(0X2E)
+    FIB = int(0x04)

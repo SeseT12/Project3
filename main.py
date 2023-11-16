@@ -52,14 +52,16 @@ if __name__ == '__main__':
     #central_node = CentralNode(1)
     #for i in range(5):
     #    central_node.add_node()
-
+    #"""""""""""
     global_node = GlobalNode()
     for i in range(5):
         global_node.add_network()
         time.sleep(1)
+    #"""""""""""
 
     #central_node = CentralNode(1)
-    #test = np.array([[0, 0, 0, 1, 1], [0, 0, 0, 1, 1], [0, 0, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 0, 0, 0]])
+    #test = np.array([[0, 1, 1, 0, 0], [1, 0, 1, 0, 1], [1, 1, 0, 1, 1], [0, 0, 1, 0, 0], [0, 1, 1, 0, 0]])
+    #print(test)
     #for i in range(5):
     #    print(central_node.create_fib(test, i).entries)
 

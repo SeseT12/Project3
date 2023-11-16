@@ -9,6 +9,7 @@ from Utils.tlv_types import TLVType
 from Utils.np_encoder import NpEncoder
 from Utils.json_keys_to_int import json_keys_to_int
 from Utils.shortest_path import get_next_node
+from Utils.packet_encoder import PacketEncoder
 import numpy as np
 import threading
 import socket
@@ -21,16 +22,18 @@ class CentralNode:
     def __init__(self, network_id):
         self.network_id = network_id
         self.node_id_increment = 1
+        self.node_ids = []
         self.nodes = []
 
         self.content_store = ContentStore()
         self.pit = PendingInterestTable()
 
+        self.node_adj_matrix = []
         self.network_adj_list = {}
 
         self.receive_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.init_server()
-        self.start()
+        #self.start()
 
     def init_server(self):
         """Initialization of the TCP/IP server to receive connections. It binds to the given host and port."""
@@ -41,6 +44,7 @@ class CentralNode:
 
     def start(self):
         threading.Thread(target=self.run).start()
+        threading.Thread(target=self.simulate_movement).start()
 
     def run(self):
         try:
@@ -72,7 +76,6 @@ class CentralNode:
             # self.fib.entries = json.loads(data.decode())
 
     def process_interest(self, interest_packet):
-        # TODO: longest prefix search
         tlv_data = InterestPacket.decode_tlv(interest_packet)
         if self.content_store.entry_exists(interest_packet):
             if tlv_data[TLVType.ID] in self.nodes:
@@ -134,44 +137,55 @@ class CentralNode:
 
     def process_adj_list_packet(self, tlv_data):
         self.network_adj_list = json.loads(tlv_data[TLVType.ADJ_LIST].decode(), object_hook=json_keys_to_int)
-        self.distribute_fib(self.create_adj_matrix())
+        self.distribute_fib()
 
     def add_node(self):
         new_node_port = 30000 + self.network_id + self.node_id_increment
         new_node_id = self.network_id + self.node_id_increment
-        create_node_thread = threading.Thread(target=self.create_node, args=(new_node_port, new_node_id, self.network_id))
+        new_node = Node(new_node_port, new_node_id, self.network_id)
+        self.nodes.append(new_node)
+        create_node_thread = threading.Thread(target=self.run_node, args=(new_node,))
         create_node_thread.start()
 
-        self.nodes.append(self.network_id + self.node_id_increment)
+        self.node_ids.append(self.network_id + self.node_id_increment)
         self.node_id_increment += 1
 
-        adj_matrix = self.create_adj_matrix()
-        # self.distribute_adj_matrix(adj_matrix)
-        #print(adj_matrix)
-        self.distribute_fib(adj_matrix)
+        self.node_adj_matrix = self.create_adj_matrix()
+        self.distribute_adj_matrix()
+        self.distribute_fib()
 
-    def create_node(self, port, id, network_id):
-        new_node = Node(port, id, network_id)
-        new_node.start()
+    def run_node(self, node):
+        node.start()
 
-    def distribute_adj_matrix(self, adj_matrix):
-        for i in range(len(self.nodes)):
-            print("distribute adj")
-            # self.nodes.get(self.network_id + i + 1).adj_matrix = adj_matrix
-
-    def distribute_fib(self, adj_matrix):
-        time.sleep(1)
-        for i in range(len(self.nodes)):
+    def distribute_adj_matrix(self):
+        for i in range(len(self.node_ids)):
+            """""""""
+            adj_matrix_json = json.dumps(np.pad(self.node_adj_matrix, (1,0), mode='constant', constant_values=1), cls=NpEncoder)
             send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             send_socket.connect(('localhost', 30000 + self.network_id + i + 1))
-            send_socket.send(json.dumps(self.create_fib(adj_matrix, i).entries, cls=NpEncoder).encode())
+            send_socket.send(PacketEncoder.encode_adj_list_packet(adj_matrix_json.encode()))
             send_socket.shutdown(socket.SHUT_RDWR)
             send_socket.close()
+            """""""""
+            self.nodes[i].adj_matrix = np.pad(self.node_adj_matrix, (1,0), mode='constant', constant_values=1)
+
+    def distribute_fib(self):
+        time.sleep(1)
+        for i in range(len(self.node_ids)):
+            """""""""
+            fib_entries_json = json.dumps(self.create_fib(self.node_adj_matrix, i).entries, cls=NpEncoder)
+            send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            send_socket.connect(('localhost', 30000 + self.network_id + i + 1))
+            send_socket.send(PacketEncoder.encode_fib_packet(fib_entries_json.encode()))
+            send_socket.shutdown(socket.SHUT_RDWR)
+            send_socket.close()
+            """""""""
+            self.nodes[i].fib.entries = self.create_fib(self.node_adj_matrix, i).entries
 
     def create_adj_matrix(self):
-        adj_matrix = np.zeros((len(self.nodes), len(self.nodes)), np.uint8)
-        for i in range(len(self.nodes)):
-            for j in range(len(self.nodes) - 1, i - 1, -1):
+        adj_matrix = np.zeros((len(self.node_ids), len(self.node_ids)), np.uint8)
+        for i in range(len(self.node_ids)):
+            for j in range(len(self.node_ids) - 1, i - 1, -1):
                 if i != j:
                     connection = np.random.choice([0, 1], p=[0.4, 0.6])
                     adj_matrix[i][j] = connection
@@ -216,3 +230,11 @@ class CentralNode:
                 path_exists = path_exists | self.path_exists(adj_matrix, index, to_node_index, visited)
 
         return path_exists
+
+    def simulate_movement(self):
+        while True:
+            time.sleep(random.uniform(5, 10))
+            self.node_adj_matrix = self.create_adj_matrix()
+            self.distribute_adj_matrix()
+            self.distribute_fib()
+
