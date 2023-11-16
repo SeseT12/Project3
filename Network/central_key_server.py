@@ -37,12 +37,12 @@ class KeyServer(Node):
                     signature = data[TLVType.SIGNATURE]
                     if self.verify_first_message(content, signature):
                         public_key = serialization.load_pem_public_key(content)
-                        self.add_network(data[TLVType.NAME], public_key)
-                        print("Added key for node ", data[TLVType.NAME])
+                        self.add_network(data[TLVType.NAME].decode(), public_key)
+                        print("Added key for node ", data[TLVType.NAME].decode())
                         self.send_key('keyserver', connection)
 
                 elif TLVType.KEY_REQUEST_PACKET in data:
-                    name = data[TLVType.NAME]
+                    name = data[TLVType.NAME].decode()
                     self.send_key(name, connection)
                 else:
                     print("Invalid packet")

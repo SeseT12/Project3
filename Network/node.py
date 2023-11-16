@@ -70,7 +70,7 @@ class Node:
     def send_data(self, name, port):
         content_data = self.content_store.content.get(name)
         content_signature = self.sign_message(content_data)
-        print("Sending data packet with name {} from node {} to node {}", name, self.id, port)
+        print("Sending data packet with name {} from node {} to node {}".format(name, self.id, port))
         data_packet_to_send = DataPacket.encode(name.encode(), self.network_id, self.id, content_data.encode(), content_signature)
         send_socket = self.connect('localhost', port)
         with threading.Lock():
@@ -140,12 +140,12 @@ class Node:
                 time.sleep(1)
 
     def process_data_packet(self, tlv_data):
-        self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT].decode(), tlv_data[TLVType.CONTENT].decode())
-        if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
-            self.forward_data(tlv_data)
-            self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
+        # self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT].decode(), tlv_data[TLVType.CONTENT].decode())
+        # if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
+        #     self.forward_data(tlv_data)
+        #     self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
         if self.verify_message(tlv_data[TLVType.CONTENT], tlv_data[TLVType.SIGNATURE], tlv_data[TLVType.NAME_COMPONENT].decode(), tlv_data[TLVType.ID].decode()):
-            self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT], tlv_data[TLVType.CONTENT])
+            self.content_store.add_content(tlv_data[TLVType.NAME_COMPONENT].decode(), tlv_data[TLVType.CONTENT].decode())
             if self.pit.interest_exists(tlv_data[TLVType.NAME_COMPONENT]):
                 self.forward_data(tlv_data)
                 self.pit.remove_interest(tlv_data[TLVType.NAME_COMPONENT].decode())
@@ -231,7 +231,19 @@ class Node:
             sender_key = serialization.load_pem_public_key(sender_key)
         try:
             sender_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+            print("Message verified")
+            print("Message: ", message)
+            print("Signature: ", signature)
+            print("Sender: ", sender_name)
+            print("ID: ", id)
+            print("Sender key: ", sender_key)
         except:
+            print("Invalid signature")
+            print("Message: ", message)
+            print("Signature: ", signature)
+            print("Sender: ", sender_name)
+            print("ID: ", id)
+            print("Sender key: ", sender_key)
             return False
         return True
 
