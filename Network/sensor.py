@@ -3,7 +3,6 @@ import socket
 import time
 import threading
 import os
-import cv2
 import string
 from Network.data_packet import DataPacket
 import json
@@ -96,7 +95,7 @@ class sensor:
                 #First part of the message is a header with the number of objects that are going to be sent, the rest is one object
             obj=self.storage.pop(0)
             name=random_name(self.network_id, self.device_id, self.type, self.sensor_id)
-            packet=DataPacket.encode(name.encode(),obj.encode())
+            packet=DataPacket.encode(name.encode(),self.network_id, self.device_id, obj.encode())
             msg=packet
             self.send_socket.send(msg)
             #close the sending socket and create a new one for the future operations

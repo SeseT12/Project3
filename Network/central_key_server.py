@@ -17,6 +17,9 @@ class KeyServer(Node):
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
+        self.start()
+    def start(self):
+        threading.Thread(target=self.run).start()
 
     def add_network(self, name, key):
         self.keyserver[name] = key
