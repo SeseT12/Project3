@@ -15,6 +15,7 @@ from Network.data_packet import DataPacket
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 from Network.sensor import sensor
 import Network.sensor
 
@@ -34,7 +35,8 @@ class Node:
         self.id = node_id
 
         self.private_key = ec.generate_private_key(
-            ec.SECP384R1()
+            ec.SECP384R1(),
+            default_backend()
         )
         self.keys = {}
         self.register_key()
@@ -207,20 +209,21 @@ class Node:
             time.sleep(random.uniform(5, 10))
             #target_node = random.choice([i for i in range(1, 5)]) + 31#self.network_id
             #network_id = self.network_id
-            name = random.choice(self.fib.entries)[0]
+            if len(self.fib.entries) > 0:
+                name = random.choice(self.fib.entries)[0]
 
-            if len(name.split("/")) < 3:
-                network_id = int(name.split("/")[0].split("network")[1])
-                name += str(random.choice([i for i in range(1, 5)]) + network_id) + "/"
+                if len(name.split("/")) < 3:
+                    network_id = int(name.split("/")[0].split("network")[1])
+                    name += str(random.choice([i for i in range(1, 5)]) + network_id) + "/"
 
-            data_index = random.choice([i for i in range(10)])
-            data_type = random.choice(Network.sensor.typelist)
-            sensor_id = random.choice([i for i in range(8)]) + 1
-            name += data_type + "/" + str(sensor_id) + "/" + str(data_index)
-            print("Node " + str(self.id) + " expressed Interest in: " + name)
-            for node_id in self.fib.get_forwarding_nodes(name):
-                print(self.fib.get_forwarding_nodes(name))
-                self.send_interest(name.encode(), 30000 + node_id, str(self.network_id) + "/" + str(self.id))
+                data_index = random.choice([i for i in range(10)])
+                data_type = random.choice(Network.sensor.typelist)
+                sensor_id = random.choice([i for i in range(8)]) + 1
+                name += data_type + "/" + str(sensor_id) + "/" + str(data_index)
+                print("Node " + str(self.id) + " expressed Interest in: " + name)
+                for node_id in self.fib.get_forwarding_nodes(name):
+                    print(self.fib.get_forwarding_nodes(name))
+                    self.send_interest(name.encode(), 30000 + node_id, str(self.network_id) + "/" + str(self.id))
             #port = 30000 + int((name.split("/")[0] + "/")[0])
             """""""""""
             target_data = random.choice([i for i in range(10)])
@@ -266,7 +269,7 @@ class Node:
                     print("No key found")
                     return False
         if type(sender_key) is bytes:
-            sender_public_key = serialization.load_pem_public_key(sender_key)
+            sender_public_key = serialization.load_pem_public_key(sender_key, default_backend())
         try:
             sender_public_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
             # print("Message verified")
@@ -289,7 +292,7 @@ class Node:
     def verify_first_message(self, message, signature): # this should be for adding keys, so message should be the key
         if signature == b'NOSIG': # for sensors
             return True
-        public_key = serialization.load_pem_public_key(message)
+        public_key = serialization.load_pem_public_key(message, default_backend())
         public_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
         return True
 
