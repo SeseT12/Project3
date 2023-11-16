@@ -51,7 +51,8 @@ class KeyServer(Node):
                     name = data[TLVType.NAME].decode()
                     self.send_key(name, connection)
                 else:
-                    print("Invalid packet")
+                    connection.close()
+
 
         except Exception as e:
             raise e
