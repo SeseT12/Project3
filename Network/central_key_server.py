@@ -75,5 +75,7 @@ class KeyServer(Node):
     def register_key(self):
         pass
 
+    def populate_content_store(self, n_entries):
+        pass
     def start(self):
         threading.Thread(target=self.run).start()

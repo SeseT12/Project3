@@ -30,23 +30,21 @@ class Node:
         self.network_id = network_id
         self.id = node_id
 
+        self.private_key = ec.generate_private_key(
+            ec.SECP384R1()
+        )
+        self.keys = {}
+        self.register_key()
+        
         self.pit = PendingInterestTable()
         self.fib = ForwardingInformationBase()
 
         #TODO
         self.content_store = ContentStore()
-        for i in range(10):
-            name = "network" + str(self.network_id) + "/" + str(self.id) + "/Test" + str(i)
-            data = "TestString" + str(i)
-            data_packet = DataPacket.encode(name.encode(), data.encode())
-            self.content_store.add_content(data_packet)
+        self.populate_content_store(10)
 
         self.adj_matrix = None
-        self.private_key = ec.generate_private_key(
-            ec.SECP384R1()
-            )
-        self.keys = {}
-        self.register_key()
+
 
         self.init_server()
         self.start()
@@ -172,6 +170,14 @@ class Node:
         except socket.error:
             return False
 
+    def populate_content_store(self, n_entries):
+        for i in range(n_entries):
+            name = "network" + str(self.network_id) + "/" + str(self.id) + "/Test" + str(i)
+            data = "TestString" + str(i)
+            sig = self.sign_message(data)
+            data_packet = DataPacket.encode(name.encode(), self.network_id, self.id, data.encode(), sig)
+            self.content_store.add_content(data_packet)
+
     def simulate_interest_request(self):
         time.sleep(5)
         print("simulate interest: " + str(self.network_id))
@@ -210,10 +216,12 @@ class Node:
                 message,
                 ec.ECDSA(hashes.SHA256())
             )
-        except:
+            return sig
+        except Exception as e:
+            print(e)
             print("Broken Message ", message)
             print("Broken Message Type ", type(message))
-        return sig
+            return None
 
     def verify_message(self, message, signature, sender_name, id):
         if signature == b'NOSIG':
