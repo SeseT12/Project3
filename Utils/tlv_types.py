@@ -9,3 +9,4 @@ class TLVType(IntEnum):
     ID = int(0x01)
     CONTENT = int(0x15)
     ADJ_LIST = int(0x03)
+    FIB = int(0x04)

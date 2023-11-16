@@ -2,8 +2,10 @@ import socket
 import threading
 import time
 import random
+import numpy as np
 
 from Network.interest_packet import InterestPacket
+from Utils.json_keys_to_int import json_keys_to_int
 from Utils.tlv_types import TLVType
 from Network.pending_interest_table import PendingInterestTable
 from Network.forwarding_information_base import ForwardingInformationBase
@@ -34,7 +36,7 @@ class Node:
         self.adj_matrix = None
 
         self.init_server()
-        self.start()
+        #self.start()
 
     def start(self):
         threading.Thread(target=self.run).start()
@@ -47,23 +49,32 @@ class Node:
         return send_socket
 
     def send_interest(self, data, port):
+        print("Send interest from " + str(self.id) + "to " + str(port))
         interest_packet_to_send = InterestPacket.encode(data, self.id)
-        send_socket = self.connect('localhost', port)
-        with threading.Lock():
-            send_socket.send(interest_packet_to_send)
-        send_socket.shutdown(socket.SHUT_RD)
-        send_socket.close()
-        print(str(self.id) + ": Sent Interest Packet to " + str(port))
+        if self.adj_matrix is not None and self.adj_matrix[self.id - self.network_id][port - self.network_id - 30000] == 1:
+            send_socket = self.connect('localhost', port)
+            with threading.Lock():
+                send_socket.send(interest_packet_to_send)
+            send_socket.shutdown(socket.SHUT_RD)
+            send_socket.close()
+            print(str(self.id) + ": Sent Interest Packet to " + str(port))
+        else:
+            print("Not Connected")
 
     def send_data(self, name, port):
+        print("Send data from " + str(self.id) + "to " + str(port))
         content_data = self.content_store.content.get(name)
-        data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode())
-        send_socket = self.connect('localhost', port)
-        with threading.Lock():
-            send_socket.send(data_packet_to_send)
-        send_socket.shutdown(socket.SHUT_RD)
-        send_socket.close()
-        print(str(self.id) + ": Sent Data Packet to " + str(port))
+        if self.adj_matrix is not None and self.adj_matrix[self.id - self.network_id][
+            port - self.network_id - 30000] == 1:
+            data_packet_to_send = DataPacket.encode(name.encode(), content_data.encode())
+            send_socket = self.connect('localhost', port)
+            with threading.Lock():
+                send_socket.send(data_packet_to_send)
+            send_socket.shutdown(socket.SHUT_RD)
+            send_socket.close()
+            print(str(self.id) + ": Sent Data Packet to " + str(port))
+        else:
+            print("Not Connected")
 
     def init_server(self):
         """Initialization of the TCP/IP server to receive connections. It binds to the given host and port."""
@@ -106,9 +117,10 @@ class Node:
         if TLVType.DATA_PACKET in tlv_data:
             self.process_data_packet(tlv_data)
             print(str(self.id) + ": Received Data Packet")
-        if len(tlv_data) == 0:
-            #print("Received FIB")
-            self.fib.entries = json.loads(data.decode())
+        if TLVType.FIB in tlv_data:
+            self.fib.entries = json.loads(tlv_data[TLVType.FIB].decode(), object_hook=json_keys_to_int)
+        if TLVType.ADJ_LIST in tlv_data:
+            self.adj_matrix = np.asarray(json.loads(tlv_data[TLVType.ADJ_LIST].decode()))
 
     def process_interest(self, tlv_data):
         if self.content_store.entry_exists(tlv_data[TLVType.NAME_COMPONENT].decode()):
@@ -155,7 +167,6 @@ class Node:
             time.sleep(random.uniform(5, 10))
             #target_node = random.choice([i for i in range(1, 5)]) + 31#self.network_id
             #network_id = self.network_id
-            print(self.fib.entries)
             name = random.choice(self.fib.entries)[0]
 
             if len(name.split("/")) < 3:
