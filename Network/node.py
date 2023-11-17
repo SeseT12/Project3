@@ -21,7 +21,7 @@ import Network.sensor
 
 import json
 import select
-KEY_SERVER_HOST = 'localhost'
+KEY_SERVER_HOST = 'rasp-039.berry.scss.tcd.ie'
 KEY_SERVER_PORT = 30500 #fix these values when we have them
 
 class Node:
