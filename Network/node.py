@@ -68,7 +68,7 @@ class Node:
         return send_socket
 
     def send_interest(self, data, port, source):
-        print("Send interest from " + str(self.id) + "to " + str(port))
+        print("Send interest from " + str(self.id) + " to " + str(port))
         interest_packet_to_send = InterestPacket.encode(data, self.id, source)
         if self.adj_matrix is not None and self.adj_matrix[self.id - self.network_id][port - self.network_id - 33000] == 1:
             send_socket = self.connect('localhost', port)
@@ -78,7 +78,7 @@ class Node:
             send_socket.close()
             print(str(self.id) + ": Sent Interest Packet to " + str(port))
         else:
-            print("Not Connected")
+            print("Movement occurred")
 
     def send_data(self, interest_packet, port=-1):
         if self.adj_matrix is not None and self.adj_matrix[self.id - self.network_id][
