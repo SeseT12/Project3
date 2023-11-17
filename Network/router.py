@@ -6,7 +6,7 @@ from Utils.tlv_types import TLVType
 from Network.interest_packet import InterestPacket
 
 class Router:
-    nodes_ports = [30002]
+    nodes_ports = [33002]
     nodes_hosts = ["localhost"]
 
     def __init__(self, host, port):

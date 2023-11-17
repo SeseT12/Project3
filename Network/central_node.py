@@ -37,8 +37,8 @@ class CentralNode:
 
     def init_server(self):
         """Initialization of the TCP/IP server to receive connections. It binds to the given host and port."""
-        print("Initialisation of the Router on port: " + str(30000 + self.network_id))
-        self.receive_socket.bind(('', 30000 + self.network_id))
+        print("Initialisation of the Router on port: " + str(33000 + self.network_id))
+        self.receive_socket.bind(('', 33000 + self.network_id))
         self.receive_socket.settimeout(10.0)
         self.receive_socket.listen(1)
 
@@ -94,7 +94,7 @@ class CentralNode:
     def send_data(self, interest_packet, port=-1):
         tlv_data = InterestPacket.decode_tlv(interest_packet)
         if port == -1:
-            port = 30000 + int(tlv_data[TLVType.ID].decode())
+            port = 33000 + int(tlv_data[TLVType.ID].decode())
         data_packet_to_send = self.content_store.get(interest_packet)
         send_socket = self.connect('localhost', port)
         send_socket.send(data_packet_to_send)
@@ -113,9 +113,9 @@ class CentralNode:
         if network_id != self.network_id:
             next_network_router_id = get_next_node(self.network_id, network_id, self.network_adj_list)
             if next_network_router_id is not None:
-                self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + next_network_router_id, tlv_data[TLVType.SOURCE])
+                self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 33000 + next_network_router_id, tlv_data[TLVType.SOURCE])
         else:
-            self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id, tlv_data[TLVType.SOURCE])
+            self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 33000 + node_id, tlv_data[TLVType.SOURCE])
 
     def send_interest(self, data, port, source):
         interest_packet_to_send = InterestPacket.encode(data, self.network_id, source)
@@ -132,7 +132,7 @@ class CentralNode:
 
     def forward_data(self, data_packet, tlv_data):
         for node_id in self.pit.pending_interests.get(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            port = (30000 + int(node_id))
+            port = (33000 + int(node_id))
             self.send_data(data_packet, port)
 
     def process_adj_list_packet(self, tlv_data):
@@ -140,7 +140,7 @@ class CentralNode:
         self.distribute_fib()
 
     def add_node(self):
-        new_node_port = 30000 + self.network_id + self.node_id_increment
+        new_node_port = 33000 + self.network_id + self.node_id_increment
         new_node_id = self.network_id + self.node_id_increment
         new_node = Node(new_node_port, new_node_id, self.network_id)
         self.nodes.append(new_node)
@@ -162,7 +162,7 @@ class CentralNode:
             """""""""
             adj_matrix_json = json.dumps(np.pad(self.node_adj_matrix, (1,0), mode='constant', constant_values=1), cls=NpEncoder)
             send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            send_socket.connect(('localhost', 30000 + self.network_id + i + 1))
+            send_socket.connect(('localhost', 33000 + self.network_id + i + 1))
             send_socket.send(PacketEncoder.encode_adj_list_packet(adj_matrix_json.encode()))
             send_socket.shutdown(socket.SHUT_RDWR)
             send_socket.close()
@@ -175,7 +175,7 @@ class CentralNode:
             """""""""
             fib_entries_json = json.dumps(self.create_fib(self.node_adj_matrix, i).entries, cls=NpEncoder)
             send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            send_socket.connect(('localhost', 30000 + self.network_id + i + 1))
+            send_socket.connect(('localhost', 33000 + self.network_id + i + 1))
             send_socket.send(PacketEncoder.encode_fib_packet(fib_entries_json.encode()))
             send_socket.shutdown(socket.SHUT_RDWR)
             send_socket.close()

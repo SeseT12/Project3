@@ -39,7 +39,7 @@ class GlobalNode:
         for i in range(len(self.network_ids)):
             adj_list_json = json.dumps(adj_list, cls=NpEncoder)
             send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            send_socket.connect(('localhost', 30000 + self.network_ids[i]))
+            send_socket.connect(('localhost', 33000 + self.network_ids[i]))
             send_socket.send(PacketEncoder.encode_adj_list_packet(adj_list_json.encode()))
             send_socket.shutdown(socket.SHUT_RDWR)
             send_socket.close()

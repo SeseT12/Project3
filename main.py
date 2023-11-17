@@ -18,21 +18,21 @@ from Utils.tlv import decode_tlv
 def create_node(message, port, send, node_id):
     new_node = node.Node(port, node_id)
     if send is True:
-        send_socket = new_node.connect('localhost', 30002)
+        send_socket = new_node.connect('localhost', 33002)
         new_node.send_interest(message, send_socket, str(new_node.network_id) + str(new_node.node_id))
         send_socket.close()
 
 
 def create_router():
-    new_router = router.Router('localhost', 30000)
+    new_router = router.Router('localhost', 33000)
 
 
 if __name__ == '__main__':
     print('Test')
-    keyserver = KeyServer(30500, 0, 10)
+    keyserver = KeyServer(33500, 0, 10)
     """""""""
-    p1 = Process(target=create_node, args=(b'Test/', 30001, True, 1))
-    p3 = Process(target=create_node, args=(b'Test/', 30002, False, 2))
+    p1 = Process(target=create_node, args=(b'Test/', 33001, True, 1))
+    p3 = Process(target=create_node, args=(b'Test/', 33002, False, 2))
     #p2 = Process(target=create_router)
     #p2.start()
     p3.start()

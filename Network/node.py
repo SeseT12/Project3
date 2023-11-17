@@ -22,7 +22,7 @@ import Network.sensor
 import json
 import select
 KEY_SERVER_HOST = 'rasp-039.berry.scss.tcd.ie'
-KEY_SERVER_PORT = 30500 #fix these values when we have them
+KEY_SERVER_PORT = 33500 #fix these values when we have them
 
 class Node:
     def __init__(self, port, node_id, network_id):
@@ -70,7 +70,7 @@ class Node:
     def send_interest(self, data, port, source):
         print("Send interest from " + str(self.id) + "to " + str(port))
         interest_packet_to_send = InterestPacket.encode(data, self.id, source)
-        if self.adj_matrix is not None and self.adj_matrix[self.id - self.network_id][port - self.network_id - 30000] == 1:
+        if self.adj_matrix is not None and self.adj_matrix[self.id - self.network_id][port - self.network_id - 33000] == 1:
             send_socket = self.connect('localhost', port)
             with threading.Lock():
                 send_socket.send(interest_packet_to_send)
@@ -82,10 +82,10 @@ class Node:
 
     def send_data(self, interest_packet, port=-1):
         if self.adj_matrix is not None and self.adj_matrix[self.id - self.network_id][
-            port - self.network_id - 30000] == 1:
+            port - self.network_id - 33000] == 1:
             tlv_data = InterestPacket.decode_tlv(interest_packet)
             if port == -1:
-                port = 30000 + int(tlv_data[TLVType.ID].decode())
+                port = 33000 + int(tlv_data[TLVType.ID].decode())
             data_packet_to_send = self.content_store.get(interest_packet)
             send_socket = self.connect('localhost', port)
             with threading.Lock():
@@ -154,7 +154,7 @@ class Node:
     def process_interest(self, interest_packet):
         tlv_data = InterestPacket.decode_tlv(interest_packet)
         if self.content_store.entry_exists(interest_packet): #tlv_data[TLVType.NAME_COMPONENT].decode()):
-            port = (30000 + int(tlv_data[TLVType.ID].decode()))
+            port = (33000 + int(tlv_data[TLVType.ID].decode()))
             self.send_data(interest_packet, port)
 
         elif self.pit.node_interest_exists(tlv_data[TLVType.ID], tlv_data[TLVType.NAME_COMPONENT]) is False:
@@ -164,7 +164,7 @@ class Node:
     def forward_interest(self, tlv_data):
         for node_id in self.fib.get_forwarding_nodes(tlv_data[TLVType.NAME_COMPONENT].decode()):
             if self.pit.node_interest_exists(str(node_id).encode(), tlv_data[TLVType.NAME_COMPONENT]) is False:
-                self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 30000 + node_id, tlv_data[TLVType.SOURCE])
+                self.send_interest(tlv_data[TLVType.NAME_COMPONENT], 33000 + node_id, tlv_data[TLVType.SOURCE])
                 time.sleep(1)
 
     def process_data_packet(self, data_packet, tlv_data):
@@ -178,7 +178,7 @@ class Node:
             print("Data packet not verified")
     def forward_data(self, data_packet, tlv_data):
         for node_id in self.pit.pending_interests.get(tlv_data[TLVType.NAME_COMPONENT].decode()):
-            port = (30000 + int(node_id))
+            port = (33000 + int(node_id))
             self.send_data(data_packet, port)
 
     def is_socket_connected(self, target_port):
@@ -223,14 +223,14 @@ class Node:
                 print("Node " + str(self.id) + " expressed Interest in: " + name)
                 for node_id in self.fib.get_forwarding_nodes(name):
                     print(self.fib.get_forwarding_nodes(name))
-                    self.send_interest(name.encode(), 30000 + node_id, str(self.network_id) + "/" + str(self.id))
-            #port = 30000 + int((name.split("/")[0] + "/")[0])
+                    self.send_interest(name.encode(), 33000 + node_id, str(self.network_id) + "/" + str(self.id))
+            #port = 33000 + int((name.split("/")[0] + "/")[0])
             """""""""""
             target_data = random.choice([i for i in range(10)])
             name = "network" + str(network_id) + "/" + str(target_node) + "/Test" + str(target_data)
-            port = 30000 + target_node
+            port = 33000 + target_node
             #self.send_interest(name.encode(), port)
-            port = 30000 + int(self.fib.get_forwarding_nodes(name.split("/")[0] + "/")[0])
+            port = 33000 + int(self.fib.get_forwarding_nodes(name.split("/")[0] + "/")[0])
             print("send simulate")
             self.send_interest(name.encode(), port)
             """""""""""
@@ -364,5 +364,5 @@ class Node:
     def renew_pending_interests(self):
         for (node_id, name) in self.pit.get_old_pending_interests():
             if name in self.content_store.keys:
-                self.send_data(name, node_id + 30000)
+                self.send_data(name, node_id + 33000)
 
