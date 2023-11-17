@@ -108,7 +108,7 @@ class Node:
         try:
             print("Node: Wait for incoming connection")
 
-            interval_seconds = 5
+            interval_seconds = 10
             last_run_time = time.time()
 
             while True:
@@ -122,7 +122,7 @@ class Node:
 
                     if time.time() - last_run_time >= interval_seconds:
                         self.renew_pending_interests()
-                        print("RENEW PIT")
+                        # print("RENEW PIT")
                         last_run_time = time.time()
 
         except Exception as e:
@@ -222,7 +222,7 @@ class Node:
                 name += data_type + "/" + str(sensor_id) + "/" + str(data_index)
                 print("Node " + str(self.id) + " expressed Interest in: " + name)
                 for node_id in self.fib.get_forwarding_nodes(name):
-                    print(self.fib.get_forwarding_nodes(name))
+                    # print(self.fib.get_forwarding_nodes(name))
                     self.send_interest(name.encode(), 33000 + node_id, str(self.network_id) + "/" + str(self.id))
             #port = 33000 + int((name.split("/")[0] + "/")[0])
             """""""""""
@@ -245,8 +245,8 @@ class Node:
             return sig
         except Exception as e:
             print(e)
-            print("Broken Message ", message)
-            print("Broken Message Type ", type(message))
+            # print("Broken Message ", message)
+            # print("Broken Message Type ", type(message))
             return None
 
     def verify_message(self, message, signature, sender_name, id):
@@ -280,12 +280,12 @@ class Node:
             # print("Sender key: ", sender_key)
         except:
             print("Invalid signature")
-            print("Message: ", message)
-            print("Signature: ", signature)
-            print("Sender: ", sender_name)
-            print("ID: ", id)
-            print("Own ID: {}/{}".format(self.network_id, self.id))
-            print("Sender key: ", sender_key)
+            # print("Message: ", message)
+            # print("Signature: ", signature)
+            # print("Sender: ", sender_name)
+            # print("ID: ", id)
+            # print("Own ID: {}/{}".format(self.network_id, self.id))
+            # print("Sender key: ", sender_key)
             return False
         return True
 

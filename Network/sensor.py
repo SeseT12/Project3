@@ -11,7 +11,7 @@ from Utils.tlv_types import TLVType
 import numpy as np
 import random
 
-typelist=["float","integer","string","timestamp","dic", "image"]
+typelist=["float"]
 
 
 def random_name(network_id, device_id, data_type, sensor_id):
@@ -46,35 +46,35 @@ class sensor:
 
 #Generate function    
     def generate(self):
-        while True:
-            if self.type == "float":
-                data = random.uniform(0, 1)
-                data_json = json.dumps(data)
-                self.receive(data_json)
-            elif self.type == "image":
-                random_pixels = np.random.randint(0, 256, (4, 4, 3), dtype=np.uint8)
-                data_json = json.dumps(random_pixels, cls=NpEncoder)
-                self.receive(data_json)
-            elif self.type == "integer":
-                data = random.randint(0, 10)
-                data_json = json.dumps(data)
-                self.receive(data_json)
-            elif self.type == "string":
-                j = random.randint(1, 10)
-                data = generate_string(j)
-                self.receive(data)
-            elif self.type == "timestamp":
-                j = random.uniform(0, 10)
-                t = time.time()
-                data_json = json.dumps((j, t))
-                self.receive(data_json)
-            elif self.type == "dic":
-                j = random.uniform(0, 10)
-                t = time.time()
-                dic = {"time": t, "value": j}
-                data_json = json.dumps(dic)
-                self.receive(data_json)
-            time.sleep(3)
+        # while True:
+        if self.type == "float":
+            data = random.uniform(0, 1)
+            data_json = json.dumps(data)
+            self.receive(data_json)
+        elif self.type == "image":
+            random_pixels = np.random.randint(0, 256, (4, 4, 3), dtype=np.uint8)
+            data_json = json.dumps(random_pixels, cls=NpEncoder)
+            self.receive(data_json)
+        elif self.type == "integer":
+            data = random.randint(0, 10)
+            data_json = json.dumps(data)
+            self.receive(data_json)
+        elif self.type == "string":
+            j = random.randint(1, 10)
+            data = generate_string(j)
+            self.receive(data)
+        elif self.type == "timestamp":
+            j = random.uniform(0, 10)
+            t = time.time()
+            data_json = json.dumps((j, t))
+            self.receive(data_json)
+        elif self.type == "dic":
+            j = random.uniform(0, 10)
+            t = time.time()
+            dic = {"time": t, "value": j}
+            data_json = json.dumps(dic)
+            self.receive(data_json)
+        time.sleep(3)
                 
                 
 
@@ -104,8 +104,9 @@ class sensor:
     
     #Main function which basically starts a sensor and make him automatically generate and send data to a node 
     def transmit(self,host,port):
-        threading.Thread(target=self.generate).start()
+        # threading.Thread(target=self.generate).start()
         while not self.stop:
+            self.generate()
             #transmission frequency of node
             time.sleep(self.frequency_send)
             self.connect(host,port)
