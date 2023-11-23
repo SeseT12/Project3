@@ -1,3 +1,4 @@
+# Contributor(s): cobreath, sregitz
 from enum import IntEnum
 
 

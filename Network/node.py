@@ -1,3 +1,4 @@
+# Contributor(s): alammu, cobreath, sregitz
 import socket
 import threading
 import time

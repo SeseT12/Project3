@@ -1,5 +1,4 @@
-
-
+# Contributor(s): sregitz
 class ForwardingInformationBase:
     def __init__(self):
         self.entries = []

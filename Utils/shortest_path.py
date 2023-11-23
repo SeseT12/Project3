@@ -1,3 +1,4 @@
+# Contributor(s): sregitz
 from collections import deque
 
 def get_next_node(start_node, end_node, adj_list):

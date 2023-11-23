@@ -1,3 +1,4 @@
+# Contributor(s): cobreath
 import os.path
 
 from Network import node

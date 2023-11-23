@@ -1,3 +1,4 @@
+# Contributor(s): cobreath, sregitz
 import os.path
 
 from Network import node

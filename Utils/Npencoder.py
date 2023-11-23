@@ -1,3 +1,4 @@
+# Contributor(s): montangr
 # -*- coding: utf-8 -*-
 """
 Created on Tue Nov 14 15:43:26 2023
