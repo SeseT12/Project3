@@ -1,3 +1,4 @@
+# Contributor(s): sregitz
 from Network.central_node import CentralNode
 from Utils.np_encoder import NpEncoder
 from Utils.packet_encoder import PacketEncoder
