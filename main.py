@@ -24,10 +24,6 @@ def create_node(message, port, send, node_id):
         send_socket.close()
 
 
-def create_router():
-    new_router = router.Router('localhost', 33000)
-
-
 if __name__ == '__main__':
     print('Test')
     keyserver = KeyServer(33500, 0, 10)

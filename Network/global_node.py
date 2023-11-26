@@ -26,8 +26,6 @@ class GlobalNode:
         self.network_id_increment += 30
 
         self.distribute_adj_list(self.create_adj_list())
-        for central_node in self.central_nodes:
-            print(central_node.network_adj_list)
 
     def create_network(self, central_node):
         central_node.start()
