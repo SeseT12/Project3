@@ -12,7 +12,7 @@ from Utils.tlv_types import TLVType
 import numpy as np
 import random
 
-typelist=["float"]
+typelist=["float", "image", "integer", "string", "timestamp", "dic"]
 
 
 def random_name(network_id, device_id, data_type, sensor_id):
