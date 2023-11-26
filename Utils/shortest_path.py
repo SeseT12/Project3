@@ -3,14 +3,14 @@ from collections import deque
 
 def get_next_node(start_node, end_node, adj_list):
     next_node = None
-    current_min_distance = float('inf')
-    for neighbor_node in adj_list.get(start_node):
-        distance = get_distance(neighbor_node, end_node, adj_list)
-        if distance != -1 and distance < current_min_distance:
-            next_node = neighbor_node
+    if start_node in adj_list.keys() and end_node in adj_list.keys():
+        current_min_distance = float('inf')
+        for neighbor_node in adj_list.get(start_node):
+            distance = get_distance(neighbor_node, end_node, adj_list)
+            if distance != -1 and distance < current_min_distance:
+                next_node = neighbor_node
 
     return next_node
-
 
 
 def get_distance(start_node, end_node, adj_list):
